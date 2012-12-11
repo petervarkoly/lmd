@@ -69,6 +69,7 @@ dist:
 	        osc ci -m "New Build Version"; \
 	fi
 	echo $(NRELEASE) > RELEASE
+	git commit -a -m "New release"
 
 package:        dist
 	rm -rf /usr/src/packages/*
