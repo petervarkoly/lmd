@@ -193,13 +193,25 @@ sub apply
 
 	my @room_access_control = ('room_access_control');
 	push @room_access_control, { head => [ '', '', '', '']};
-	push @room_access_control, { line => [ 'room_access_control',
+	if( main::isAllowed('RoomAccessControl.showMyRoom.all') )
+	{
+		push @room_access_control, { line => [ 'room_access_control',
 						{ name => 'printing_allowed', value => main::__("$print"), attributes => [ type => 'action', style => "color:".$print_color] },
 						{ name => 'direct_internet_access', value => main::__("$all"), attributes => [ type => 'action', style => "color:".$all_color] },
 						{ name => 'internet_allowed', value => main::__("$proxy"), attributes => [ type => 'action', style => "color:".$proxy_color] },
 						{ name => 'samba', value => main::__("$samba"), attributes => [ type => 'action', style => "color:".$samba_color] },
 						{ name => 'room_dn', value => "$room_dn", attributes => [ type => 'hidden' ] },
 					]};
+	}
+	else
+	{
+		push @room_access_control, { line => [ 'room_access_control',
+						{ name => 'printing_allowed', value => main::__("$print"), attributes => [ type => 'action', style => "color:".$print_color] },
+						{ name => 'internet_allowed', value => main::__("$proxy"), attributes => [ type => 'action', style => "color:".$proxy_color] },
+						{ name => 'samba', value => main::__("$samba"), attributes => [ type => 'action', style => "color:".$samba_color] },
+						{ name => 'room_dn', value => "$room_dn", attributes => [ type => 'hidden' ] },
+					]};
+	}
 	push @ret, { table => \@room_access_control };
 
 	#------get printer proplem-------
