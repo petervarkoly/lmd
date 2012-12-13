@@ -45,8 +45,20 @@ case "$1" in
         # Start daemons.
         echo -n "Starting lmd "
 	export PERL_UNICODE=63
-	$LMD_BIN --disabled=$LMD_DISABLED_MODULES --init &> /dev/null
-        /sbin/startproc $LMD_BIN --disabled=$LMD_DISABLED_MODULES --address=$LMD_ADDRESS --port=$LMD_PORT --stime=$LMD_SESSION_TIMEOUT
+	if [ "$LMD_DISABLED_MODULES" ]; then
+		LMD_BIN="$LMD_BIN --disabled=$LMD_DISABLED_MODULES"
+	fi
+	$LMD_BIN --init &> /dev/null
+	if [ "$LMD_SESSION_TIMEOUT" ]; then
+		LMD_BIN="$LMD_BIN --stime=$LMD_SESSION_TIMEOUT"
+	fi
+	if [ "$LMD_ADDRESS" ]; then
+		LMD_BIN="$LMD_BIN --address=$LMD_ADDRESS"
+	fi
+	if [ "$LMD_PORT" ]; then
+		LMD_BIN="$LMD_BIN --port=$LMD_PORT"
+	fi
+        /sbin/startproc $LMD_BIN
         rc_status -v
         ;;
   stop)

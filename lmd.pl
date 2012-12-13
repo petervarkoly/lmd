@@ -871,6 +871,7 @@ sub EndTag
 		my $connect = { SESSIONID    => $SESSIONID, 
 		    	    aDN	         => GetSessionValue('dn'),
 	 	    	    sDN	         => GetSessionValue('sdn'),
+	 	    	    uid	         => GetSessionValue('username'),
 		    	    aPW          => GetSessionValue('userpassword'),
 		    	    DBH          => $DBH,
 			    PRINTSERVER_LOCAL => $PRINTSERVER_LOCAL,
@@ -896,6 +897,7 @@ sub EndTag
 		$SHREQUEST .= 'ip '.GetSessionValue('ip')."\n";
 		$SHREQUEST .= 'aDN '.GetSessionValue('dn')."\n";
 		$SHREQUEST .= 'sDN '.GetSessionValue('sdn')."\n";
+		$SHREQUEST .= 'uid '.GetSessionValue('username')."\n";
 		$SHREQUEST .= 'aPW '.GetSessionValue('userpassword')."\n";
 		$SHREQUEST .= "PRINTSERVER_LOCAL $PRINTSERVER_LOCAL\n";
 		$SHREQUEST .= "MAILSERVER_LOCAL $MAILSERVER_LOCAL\n";
@@ -1513,7 +1515,13 @@ sub login
 	my @reply= ();
 	$SESSIONID   = md5_hex($rand.$result);
 	my $role = $result->{$dn}->{role}->[0] || 'students';
+	#Evaluate role map
 	$role = $ROLEMAP{$role} if (defined $ROLEMAP{$role} );
+	#If there is no menu for this role take it from students
+	if( ! defined $MENU->{$role} )
+	{#TODO Default role must be definable
+		$role = 'students';
+	}
 	$LANG = $result->{$dn}->{preferredlanguage}->[0] || 'EN';
 	if( $LANG =~ /(.*)_(.*)/){ $LANG = uc($1) };
 	$LANG = uc($LANG);
