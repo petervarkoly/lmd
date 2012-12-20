@@ -59,6 +59,7 @@ sub getCapabilities
 		 { variable     => [ proxy    => [ type => 'boolean' ] ] },
 		 { variable     => [ samba    => [ type => 'boolean' ] ] },
 		 { variable     => [ modify   => [ type => 'boolean' ] ] },
+		 { variable     => [ workday  => [ type => 'boolean' ] ] },
 		 { variable     => [ label1   => [ type => 'label' ] ] },
 		 { variable     => [ room     => [ type => 'label' ] ] },
 		 { variable     => [ rooms    => [ type => 'popup' ] ] },
@@ -304,8 +305,8 @@ sub showAccessScheduler
 	my $acls   = $this->get_room_access_list($dn);
 	my $desc   = $this->get_attribute($dn,'description');
 	my @D	   = ('default');
-	my @N	   = ('new' ,{ head => [ 'add',   'time','', 'all','mailing','printing','proxy','samba']});
-	my @L      = ('acls',{ head => [ 'delete','time','', 'all','mailing','printing','proxy','samba']} );
+	my @N	   = ('new' ,{ head => [ 'add',   'time','workday','', 'all','mailing','printing','proxy','samba']});
+	my @L      = ('acls',{ head => [ 'delete','time','workday','', 'all','mailing','printing','proxy','samba']} );
 	my @r      = ( { notranslate_subtitle => main::__('Edit Room Access State Scheduler').' '.$desc } );
 	push @D , { line => [ 'DEFAULT' , {all      => $acls->{'DEFAULT'}->{'all'}},
 					  {mailing  => $acls->{'DEFAULT'}->{'mailing'}},
@@ -317,24 +318,29 @@ sub showAccessScheduler
 	foreach my $time ( sort(keys(%{$acls})) )
 	{
 		next if ( $time eq 'DEFAULT' );
+		my ( $h,$m,$wd,$hd ) = split /:/,$time;
 		if( $acls->{$time} eq 'DEFAULT' )
 		{
-			push @L , { line => [ $time , {delete => 0}, 
-					  { time     => $time  },
+			push @L , { line => [ $time , 
+					  { delete   => 0}, 
+					  { time     => "$h:$m"  },
+					  { workday  => $wd eq '0111110' ? 1:0 },
 					  { ClientControl => ClientControl('DEFAULT') }]
 		  	};
 		}
 		elsif( defined $acls->{$time}->{'ClientControl'} )
 		{
 			push @L , { line => [ $time , {delete => 0}, 
-					  { time          => $time  },
+					  { time          => "$h:$m"  },
+					  { workday  => $wd eq '0111110' ? 1:0 },
 					  { ClientControl => ClientControl($acls->{$time}->{'ClientControl'}) }]
 		  	};
 		}
 		else
 		{
 			push @L , { line => [ $time , {delete => 0}, 
-					  { time     => $time  },
+					  { time     => "$h:$m"  },
+					  { workday  => $wd eq '0111110' ? 1:0 },
 					  { label1   => '' },
 					  { all      => $acls->{$time}->{'all'}},
 					  { mailing  => $acls->{$time}->{'mailing'}},
@@ -346,6 +352,7 @@ sub showAccessScheduler
 	}
 	push @N , { line => [ 'NEW' , {add => 0}, 
 			  { time     => '00:00'  },
+			  { workday  => 1 },
 			  { ClientControl => ClientControl('-')},
 			  { all      => $acls->{'DEFAULT'}->{'all'}},
 			  { mailing  => $acls->{'DEFAULT'}->{'mailing'}},
@@ -381,29 +388,39 @@ sub setAccessScheduler
 	foreach my $key ( keys %{$reply->{acls}} )
 	{
 	    next if ($reply->{acls}->{$key}->{delete});
+            my ( $h,$m,$wd,$hd ) = split /:/,$key;
+	    my $fkey = "$h:$m:1111111";
+	    if( $reply->{acls}->{$key}->{workday} )
+	    {
+	    	$fkey = "$h:$m:0111110";
+	    }
+	    #TODO Holiday
+	    $fkey .= ':1';
 	    if( defined $reply->{acls}->{$key}->{ClientControl} )
 	    {
 		if( $reply->{acls}->{$key}->{ClientControl} eq 'DEFAULT' )
 		{
-	        	$acls->{$key}->{DEFAULT} = 1;
+	        	$acls->{$fkey}->{DEFAULT} = 1;
 		}
 		elsif( $reply->{acls}->{$key}->{ClientControl} ne '-'  )
 		{
-			$acls->{$key}->{ClientControl} = $reply->{acls}->{$key}->{ClientControl};
+			$acls->{$fkey}->{ClientControl} = $reply->{acls}->{$key}->{ClientControl};
 		}
 	    }
 	    else
 	    {
-		$acls->{$key}->{all} = $reply->{acls}->{$key}->{all};
-		$acls->{$key}->{proxy} = $reply->{acls}->{$key}->{proxy};
-		$acls->{$key}->{printing} = $reply->{acls}->{$key}->{printing};
-		$acls->{$key}->{mailing} = $reply->{acls}->{$key}->{mailing};
-		$acls->{$key}->{samba} = $reply->{acls}->{$key}->{samba};
+		$acls->{$fkey}->{all} = $reply->{acls}->{$key}->{all};
+		$acls->{$fkey}->{proxy} = $reply->{acls}->{$key}->{proxy};
+		$acls->{$fkey}->{printing} = $reply->{acls}->{$key}->{printing};
+		$acls->{$fkey}->{mailing} = $reply->{acls}->{$key}->{mailing};
+		$acls->{$fkey}->{samba} = $reply->{acls}->{$key}->{samba};
 	    }
 	}
 	if( $reply->{'new'}->{NEW}->{add} )
 	{
-	    my $time = $reply->{'new'}->{NEW}->{'time'};
+	    my $time = $reply->{'new'}->{NEW}->{'time'}.':'.( $reply->{'new'}->{NEW}->{'workday'} ? '0111110' : '1111111' );
+	    #TODO Holiday
+	    $time .= ':1';
 	    if( $reply->{'new'}->{NEW}->{ClientControl} ne '-' )
 	    {
 		if( $reply->{'new'}->{NEW}->{ClientControl} eq 'DEFAULT' )
