@@ -114,12 +114,15 @@ if( $action eq 'getINSTALLATIONS' )
         {
            $ip  = $cgi->remote_addr();
         }
-
+# print $cgi->header(-charset=>'utf-8');
+# print $cgi->start_html(-title=>'itool');
         my $ws_dn = $oss->get_host($ip);
 	my $hostname = $oss->get_attribute($ws_dn,'cn');
 	my $ws_user_dn = $oss->get_user_dn($hostname);
 	$ws_user_dn = 'o=oss,'.$ws_user_dn;
+#print $ws_user_dn."\n";
 	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', "$ws_user_dn");
+#print Dumper($obj);
 	if( scalar(@$obj) > 0 ){
 		foreach my $sw_user_dn ( @$obj ){
 			my $sw_name   = $oss->get_attribute($sw_user_dn,'configurationKey');
@@ -229,4 +232,42 @@ if( $action eq 'setINSTALLATIONS' )
         print $cgi->start_html(-title=>'itool');
         print "setINSTALLATIONS $msg\n";
         print $cgi->end_html();
+}
+
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getPRODUCTKEY&IP=192.168.10.131&SW_NAME=msOfficeProfPlus2010x86" 
+=cut
+if( $action eq 'getPRODUCTKEY' )
+{
+	my $ip      = $cgi->param("IP");
+	my $sw_name = $cgi->param("SW_NAME");
+	my $prodkey = "";
+
+	if( !defined $ip )
+	{
+		$ip  = $cgi->remote_addr();
+	}
+	my $ws_dn = $oss->get_host($ip);
+	my $hostname = $oss->get_attribute($ws_dn,'cn');
+
+	my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
+	if( $oss->exists_dn( $sw_dn )  ){
+		my $allocation_type = $oss->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
+		my $obj = $oss->search_vendor_object_for_vendor( 'productkeys', $sw_dn);
+		if( defined $obj->[0] ){
+			foreach my $prodkey_dn ( @$obj ){
+				my $key   = $oss->get_attribute($prodkey_dn, 'configurationKey');
+				if( $oss->get_vendor_object( $sw_dn, 'productkeys', $key, "$hostname") ){
+					$prodkey = $key." ALLOCATION_TYPE ".$allocation_type;
+					last;
+				}
+			}
+		}
+	}
+
+	print $cgi->header(-charset=>'utf-8');
+	print $cgi->start_html(-title=>'itool');
+	print "PRODUCTKEY $prodkey\n";
+	print $cgi->end_html();
 }
