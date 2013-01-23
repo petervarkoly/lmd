@@ -39,8 +39,9 @@ sub getCapabilities
 		 { category     => 'Network' },
 		 { order        => 30 },
 		 { variable     => [ "add",         [ type => "action", label => "" ] ] },
-		 { variable     => [ "ws",          [ type => "string", label => "workstation" ] ] },
-		 { variable     => [ "workstation", [ type => "popup" ] ] },
+		 { variable     => [ "ws",          [ type => "label", label => "workstation" ] ] },
+		 { variable     => [ "wsip",        [ type => "hidden", ] ] },
+		 { variable     => [ "workstation", [ type => "popup"   ] ] },
 		 { variable     => [ "activ",       [ type => "boolean" ] ] },
 		 { variable     => [ "delete",      [ type => "boolean" ] ] }
 	];
@@ -48,12 +49,15 @@ sub getCapabilities
 
 sub default
 {
-	my $other_ports     = "";
-
+	my $this   = shift;
 	my @newaccess = ( 'newaccess' );
 	my @oldaccess = ( 'oldaccess' );
 	my %ws        = ();
 	my @lws       = ();
+	$ws{$this->get_school_config("SCHOOL_SERVER")}     = "admin";
+	$ws{$this->get_school_config("SCHOOL_MAILSERVER")} = "schoolserver";
+	push @lws , [ $this->get_school_config("SCHOOL_SERVER"),     "admin" ];
+	push @lws , [ $this->get_school_config("SCHOOL_MAILSERVER"), "schoolserver" ];
 	foreach( split /\n/, `oss_get_workstations.sh` )
 	{
 		my ($a,$b) = split / /,$_;
@@ -67,24 +71,13 @@ sub default
 			MESSAGE => 'There are no workstations registered'
 		}
 	};
-	my $in = 0;
-	foreach( split /\n/, get_file('/etc/rinetd.conf'))
-	{
-		if( $in )
-		{
-			if( /^#(\S+) (\S+) (\S+) (\S+)/ )
-			{
-				push @oldaccess, { line => [ "$3-$4", { extport => $2 } , { ws => $ws{$3} } , { port => $4 }, { activ => 0 }, { delete => 0 } ] };
-			}
-			elsif( /(\S+) (\S+) (\S+) (\S+)/ )
-			{
-				push @oldaccess, { line => [ "$3-$4", { extport => $2 } , { ws => $ws{$3} } , { port => $4 }, { activ => 1 }, { delete => 0 } ] };
-			}
-		}
-		else
-		{
-			$in = 1 if( /^###ClientRemoteAccess###/ );
-		}
+	my $fw = get_file('/etc/sysconfig/SuSEfirewall2');
+        $fw =~ /^FW_FORWARD_MASQ="(.*)"$/m;
+        foreach my $access ( split /\s+/, $1 )
+        {
+		my ( $from,$dest,$prot,$dp,$sp ) = split( /,/, $access);
+		$sp = $dp if ( !defined $sp );
+		push @oldaccess, { line => [ "$dest-$dp", { extport => $sp } , { ws => $ws{$dest} } , { wsip => $dest }, { port => $dp }, { delete => 0 } ] };
 	}
 	push @newaccess, { line => [ '1', { extport => '' } , { workstation => \@lws } , { port => '' }, { add => main::__('add') } ] };
 	
@@ -101,81 +94,17 @@ sub apply
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my @RIP    = (); #rinetd ports
-	my @CP     = (); #rinetd ports to close
-	my @OP     = (); #rinetd ports to open
 	my @FWP    = (); #firewall ports
+	my @FWR    = (); #firewall regel
 
-	my $fw = get_file('/etc/sysconfig/SuSEfirewall2');
-	$fw =~ /^FW_SERVICES_EXT_TCP="(.*)"$/m;
- 	foreach ( split /\s+/, $1 )
- 	{
-		if( /ssh|22|444|https|443|smtp/ )
-		{
-			push @FWP, $_;
-		}
-		else
-		{
-			push @RIP, $_;
-		}
- 	}
-	
-
-	# create new rinetd configuration
-	my $in = 0;
-	my $ri = '';
-	foreach( split /\n/, get_file('/etc/rinetd.conf'))
+	foreach my $k ( keys %{$reply->{oldaccess}} )
 	{
-		if( $in )
-		{
-			if( /#(\S+) (\S+) (\S+) (\S+)/ )
-			{
-				if ( $reply->{oldaccess}->{"$3-$4"}->{delete} )
-				{
-					push @CP , $2;
-					next;
-				}
-				if ( $reply->{oldaccess}->{"$3-$4"}->{activ} )
-				{
-					s/^#//;
-					push @OP, $2;
-				}
-			}
-			elsif( /^(\S+) (\S+) (\S+) (\S+)/ )
-			{
-				if ( $reply->{oldaccess}->{"$3-$4"}->{delete} )
-				{
-					push @CP , $2;
-					next;
-				}
-				if ( !$reply->{oldaccess}->{"$3-$4"}->{activ} )
-				{
-					$_ = '#'.$_;
-					push @CP , $2;
-				}
-			}
-		}
-		else
-		{
-			$in = 1 if( /^###ClientRemoteAccess###/ );
-		}
-		$ri .= "$_\n";
+		next if( $reply->{oldaccess}->{$k}->{delete} );
+		push @FWR, '0/0,'.$reply->{oldaccess}->{$k}->{wsip}.',tcp,'.$reply->{oldaccess}->{$k}->{port}.','.$reply->{oldaccess}->{$k}->{extport};
 	}
-	print $ri."\n";
-	#remove the ports
-	foreach(@RIP)
-	{
-		push @FWP, $_ if( ! contains($_,\@CP ) );
-	}
-	foreach(@OP)
-	{
-		push @FWP, $_ if( ! contains($_,\@FWP ) );
-	}
-	my $ACCES = join " ", @FWP;
-	system("perl -pi -e 's/^FW_SERVICES_EXT_TCP=.*\$/FW_SERVICES_EXT_TCP=\"$ACCES\"/' /etc/sysconfig/SuSEfirewall2");
+	my $ACCESS = join " ", @FWR;
+	system("perl -pi -e 's/^FW_FORWARD_MASQ=.*\$/FW_FORWARD_MASQ=\"$ACCESS\"/' /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
-	write_file('/etc/rinetd.conf',$ri);
-	$this->rc('rinetd','reload');
 	$this->default;
 }
 
@@ -183,12 +112,16 @@ sub add
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $line   = $this->get_school_config('SCHOOL_SERVER_EXT_IP')." ".$reply->{newaccess}->{1}->{extport}.
-								      " ".$reply->{newaccess}->{1}->{workstation}.
-								      " ".$reply->{newaccess}->{1}->{port}."\n";
+	my @ports  = (); 
 	my $fw     = get_file('/etc/sysconfig/SuSEfirewall2');
-	my $ri     = get_file('/etc/rinetd.conf');
-	my @ports  = split /\n/, `awk '{ print \$2 }' /etc/rinetd.conf`;
+	$fw =~ /^FW_FORWARD_MASQ="(.*)"$/m;
+	my $ACCESS = $1;
+        foreach my $access ( split /\s+/, $1 )
+        {
+		my ( $from,$dest,$prot,$dp,$sp ) = split( /,/, $access);
+		$sp = $dp if ( !defined $sp );
+		push @ports, $sp;
+	}
 
 	if( $reply->{newaccess}->{1}->{extport} !~ /^\d+$/ || $reply->{newaccess}->{1}->{port} !~ /^\d+$/ )
 	{
@@ -208,21 +141,10 @@ sub add
 		};
 	}
 
-	$fw =~ /^FW_SERVICES_EXT_TCP="(.*)"$/m;
-	$fw = $1." ".$reply->{newaccess}->{1}->{extport};
-	system("perl -pi -e 's/^FW_SERVICES_EXT_TCP=.*\$/FW_SERVICES_EXT_TCP=\"$fw\"/' /etc/sysconfig/SuSEfirewall2");
+	$ACCESS .= ' 0/0,'.$reply->{newaccess}->{1}->{workstation}.',tcp,'.$reply->{newaccess}->{1}->{port}.','.$reply->{newaccess}->{1}->{extport}; 
+	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#' /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
 
-	if( $ri =~ /^###ClientRemoteAccess###/m )
-	{
-		$ri .= $line;
-	}
-	else
-	{
-		$ri .= "###ClientRemoteAccess###\n$line";
-	}
-	write_file('/etc/rinetd.conf',$ri);
-	$this->rc('rinetd','reload');
 	$this->default;
 }
 
