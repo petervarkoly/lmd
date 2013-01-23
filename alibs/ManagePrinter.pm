@@ -92,6 +92,7 @@ sub default
 {
 	my $this 	= shift;
 	my $reply	= shift;
+	my $msg_tmp     = `killall -SIGHUP smbd`;
 	my $printers	= $this->get_printers();
 	my $defaultp	= $printers->{DEFAULT};
 	my @lines       = ('printers');
@@ -820,6 +821,14 @@ sub install_driver
 	my $admin_pass = main::GetSessionValue('userpassword');
 	my $admin_user = main::GetSessionValue('username');
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
+
+	#set printer name if not ok
+	my $getprintername = `rpcclient -U$admin_user%$admin_pass -c 'getprinter "$printer_name" 2' printserver | grep "printername"`;
+	if( $getprintername =~ /(.*)printername\:\[\\\\PRINTSERVER\\\]$/){
+		`rpcclient -U$admin_user%$admin_pass -c 'setprintername "$printer_name" "$printer_name"' printserver`;
+	}
+#	`rpcclient -U$admin_user%$admin_pass -c 'setprinterdata $printer_name string printprocessor winprint' printserver`;
+
 	system('rcsmb reload');
 	if($install_printer_driver eq 'inactive'){
 		if( !(-e "/var/lib/samba/drivers/W32X86/3") ){
@@ -848,6 +857,7 @@ sub install_driver
 
 		system('rcsmb reload');
 		cmd_pipe('at now', "cupsaddsmb -H printserver -U $admin_user%$admin_pass -v $printer_name");
+		sleep 5;
 
 		my $prt = $this->check_pid_cupsaddsmb();
 		if( $prt ){
