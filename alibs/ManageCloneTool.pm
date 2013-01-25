@@ -404,7 +404,7 @@ sub start
 	$PARTITIONS .= $WORKSTATIONS;
 print "\nPARTITIONS $PARTITIONS\n";
 	my $count = `echo "$PARTITIONS" | oss_restore_workstations.pl`;
-	my $sw_inst_msg = $this->install_deffault_software($reply);
+	my $sw_inst_msg = $this->install_default_software($reply);
 
 	my @ret;
 	if( scalar(@$sw_inst_msg) > 0 ){
@@ -588,7 +588,7 @@ sub set_sofware
 	$this->sw_autoinstall($reply);
 }
 
-sub install_deffault_software
+sub install_default_software
 {
 	my $this   = shift;
 	my $reply  = shift;
@@ -627,6 +627,21 @@ sub install_deffault_software
 	my $no_prodkey = "";
 	foreach my $ws_name ( sort @workstations ){
 		my $ws_user_dn = 'o=oss,'.$this->get_user_dn("$ws_name");
+		if( !$this->exists_dn($ws_user_dn)  )
+		{
+			my $result = $this->{LDAP}->add( dn =>  $ws_user_dn,
+                                            attr => [
+                                                objectclass => [ 'top', 'organization' ],
+                                                o           => 'oss'
+					]);
+			if( $result->code )
+			{
+				$this->ldap_error($result);
+				print STDERR "Error by creating $ws_user_dn\n";
+				print STDERR $this->{ERROR}->{code}."\n";
+				print STDERR $this->{ERROR}->{text}."\n";
+			}
+		}
 		my $obj = $this->search_vendor_object_for_vendor( 'osssoftware', "$ws_user_dn");
 		if( scalar(@$obj) > 0 ){
 			foreach my $sw_user_dn ( @$obj ){
