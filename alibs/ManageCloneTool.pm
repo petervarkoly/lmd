@@ -7,6 +7,7 @@ package ManageCloneTool;
 
 use strict;
 use oss_base;
+use oss_utils;
 use Net::LDAP::Entry;
 use Data::Dumper;
 
@@ -652,7 +653,13 @@ sub install_default_software
 					$status = $this->prodkey_allocation($sw_dn, $ws_name);
 					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
 				}
-				$this->modify_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled") if($status);
+				if($status){
+					$this->modify_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled");
+					insert_host_to_wpkghostsxml($ws_name);
+					if( !-e "/srv/itool/swrepository/logs/$ws_name/" ){
+						cmd_pipe("mkdir /srv/itool/swrepository/logs/$ws_name/");
+					}
+				}
 			}
 		}
 		else
@@ -664,7 +671,13 @@ sub install_default_software
 					$status = $this->prodkey_allocation($sw_dn, $ws_name);
 					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
 				}
-				$this->create_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled") if($status);
+				if($status){
+					$this->create_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled");
+					insert_host_to_wpkghostsxml($ws_name);
+					if( !-e "/srv/itool/swrepository/logs/$ws_name/" ){
+						cmd_pipe("mkdir /srv/itool/swrepository/logs/$ws_name/");
+					}       
+				}
 			}
 		}
 	}
