@@ -564,7 +564,7 @@ sub step7
 	my $ip = main::GetSessionValue('ip');
 	$this->set_room_access_state( $actuale_room_dn, 'proxy', $test_info_h->{ProxyAccess}, $ip );
 	$this->set_room_access_state( $actuale_room_dn, 'samba', $test_info_h->{WindowsAccess}, $ip );
-	$this->set_room_access_state( $actuale_room_dn, 'all', $test_info_h->{DirectInternetAccess}, $ip )
+	$this->set_room_access_state( $actuale_room_dn, 'all', $test_info_h->{DirectInternetAccess}, $ip );
 
 	my $TimeZones = getTimeZones();
 	my( $sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst )   = localtime(time);
