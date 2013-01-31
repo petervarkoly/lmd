@@ -65,9 +65,14 @@ sub getCapabilities
 sub default
 {
 	my $this = shift;
+	my $reply = shift;
 	my @r =();
 	my @lines =('guestgroups');
 	my $language =  main::GetSessionValue('lang');
+
+	if( exists($reply->{warning}) ){
+		push @r, { NOTICE => $reply->{warning} };
+	}
 
 	my $mydn = main::GetSessionValue('dn');
 	my $dn = $this->get_current_guestgroups($mydn);
@@ -93,13 +98,19 @@ sub default
 			$webdav_access = main::__("No");
 		}
 		my $roomlist = $this->get_vendor_object( @$dn[$i], 'EXTIS','RoomList');
-			
+
+		my $users = main::__('Users: ');
+		my $u = $this->get_users_of_group( @$dn[$i], 1);
+		foreach my $k ( sort keys %{$u}){
+			$users .= $u->{$k}->{uid}->[0].", " if($k !~ /^cn=(.*)/);
+		}
+
 		my @line = ( @$dn[$i] );
 		push @line, { name => 'name', value => $group->{cn}->[0], "attributes" => [ type => "label" ] };
 		push @line, { name => 'description', value => $group->{description}->[0], "attributes" => [ type => "label" ] };
 		push @line, { name => 'privategroup', value => $privategroup, "attributes" => [ type => "label" ] };
 		push @line, { name => 'webdav_access', value => $webdav_access, "attributes" => [ type => "label" ] };
-		push @line, { name => 'accountsnumber', value => $accountsnumber-1, "attributes" => [ type => "label" ] };
+		push @line, { name => 'accountsnumber', value => $accountsnumber-1, "attributes" => [ type => "label", help => $users ] };
 		push @line, { name => 'ExpirationDateGroup', value => $expirationdategroup->[0], "attributes" => [ type => "label" ] };
 		push @line, { name => 'RoomList', value => main::__("$roomlist->[0]"), "attributes" => [ type => "label" ] };
 		push @line, { delete => main::__('delete')};
@@ -115,42 +126,35 @@ sub default
 sub addNewGuestGroup
 {
 	my $this  = shift;
+	my $reply = shift;
 	my $tmp   = $this->get_rooms();
 	my @rooms = ();
 	my @newgroup = ();
-	my $reply = shift;
-	my $error = shift || '';
-
-	if($error ne ''){
-		push @newgroup, { ERROR => $error};
+	if( exists($reply->{warning}) ){
+		push @newgroup, { ERROR => $reply->{warning} };
 	}
-	my $cn = $reply->{cn} || '';
-	my $description = $reply->{description} || '';
-	my $generalpassword = $reply->{generalpassword} || '';
-	my $accountsnumber = $reply->{accountsnumber} || '';
-	my $fquota = $reply->{fquota} || '';
-	my $privategroup = $reply->{privategroup} || '';
 
 	my( $sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst )   = localtime(time);
         my $Date = sprintf('%4d-%02d-%02d',$year+1900,$mon+1,$mday);
 	my @time = strptime($Date);
 	$time[3] = $time[3]+6;
 	my $expirationdate = POSIX::strftime("%Y-%m-%d", @time);
-
 	foreach my $dn (sort keys %{$tmp})
         {
 		push @rooms, $tmp->{$dn}->{"description"}->[0];
         }
+	push @rooms, '---DEFAULTS---';
+	push @rooms, 'all';
 
-	push @newgroup, { cn => $cn };
-	push @newgroup, { description => $description };
-        push @newgroup, { generalpassword => $generalpassword };
-        push @newgroup, { accountsnumber => $accountsnumber } ;
-	push @newgroup, { fquota => $fquota };
+	push @newgroup, { cn => $reply->{cn} };
+	push @newgroup, { description => $reply->{description} };
+        push @newgroup, { generalpassword => $reply->{generalpassword} };
+        push @newgroup, { accountsnumber => $reply->{accountsnumber} } ;
+	push @newgroup, { fquota => $this->get_school_config('SCHOOL_FILE_QUOTA') };
 	push @newgroup, { expirationdategroup => $expirationdate};
 	push @newgroup, { roomlist => [ 'all', @rooms ] } ;
 	push @newgroup, { grouptype => 'guest'};
-	push @newgroup, { privategroup => $privategroup };
+	push @newgroup, { privategroup => $reply->{privategroup} };
 	push @newgroup, { webdav_access => 0 } ;
 	push @newgroup, { action => 'cancel' } ;
         push @newgroup, { action => 'apply' } ;
@@ -166,27 +170,27 @@ sub apply
 	my @pcs;	
 	my $pclist;
 
-	my @error;
-	my $errors = '';
 	if(!$reply->{cn}){
-		push @error, 'Assign group name';
+		$reply->{warning} .= main::__('Assign group name!')."<BR>";
+	}
+	if(!$reply->{description}){
+		$reply->{warning} .= main::__('Assign group description!')."<BR>";
 	}
 	if(!$reply->{generalpassword}){
-		push @error, 'Assign password';
+		$reply->{warning} .= main::__('Assign password!')."<BR>";
 	}
-	if(!$reply->{accountsnumber}){
-		push @error, 'Enter the number of users';
+	if($reply->{accountsnumber} !~ /^[0-9]{1,2}$/ ){
+		$reply->{warning} .= main::__('Enter the number of users correctly!')."<BR>";
 	}
 	if(!$reply->{fquota}){
-                push @error, 'Enter the size of storage users';
-        }
+		$reply->{warning} .= main::__('Enter the size of storage users!')."<BR>";
+	}
 	if(!$reply->{roomlist}){
-		push @error, 'Assign classroom(s) which can be accessed by the users';
+		$reply->{warning} .= main::__('Assign classroom(s) which can be accessed by the users!')."<BR>";
 	}
 	
-	$errors = join ",<br>", @error;
-	if( $errors ne '' ){
-		return $this->addNewGuestGroup($reply,$errors);
+	if( exists($reply->{warning}) ){
+		return $this->addNewGuestGroup($reply);
 	}
 
 	my( $sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst )   = localtime(time);
@@ -231,6 +235,7 @@ sub apply
 	        }      
 	
 		#create users
+		$reply->{warning} = main::__('Users: ');
 		for( my $i = 1; $i <= $reply->{accountsnumber}; $i++ ){
 			my %USER =();
 			$USER{role} = lc($reply->{cn});
@@ -251,9 +256,10 @@ sub apply
 	                	MESSAGE_NOTRANSLATE => $oss_user->{ERROR}->{text}
 		           }
 		        }
+			$reply->{warning} .=  $this->get_attribute($dnu, 'uid').", ";
 
 			if( scalar @pcs ) {
-			        $this->{LDAP}->modify( $dnu, add => { sambaUserWorkstations => join(" ", @pcs) } );
+			        $this->{LDAP}->modify( $dnu, add => { sambaUserWorkstations => join(",", @pcs) } );
 			}
 			if($reply->{privategroup} == 1){
 	               		$this->{LDAP}->modify( $dnu, add => { writerDN => main::GetSessionValue('dn') } );
@@ -284,16 +290,14 @@ sub apply
                 $deleteguestscript .= "system('rmdir /home/".lc($reply->{cn})."');\n";
                 $deleteguestscript .= "system(\"unlink ".'/usr/share/oss/setup/delete-guest-'.uc($reply->{cn}).'.pl")';
 
-
                 printf FILE $deleteguestscript;
                 close (FILE);
                 chmod(0755, $deletescripturl );
 
-
-		$this->default();
+		return $this->default($reply);
 	}else{
-		$errors = 'The given expirationdategroup\'s value is older than todays date. Please add a future date';
-		return $this->addNewGuestGroup($reply,$errors);
+		$reply->{warning} = main::__('The given expirationdategroup\'s value is older than todays date. Please add a future date');
+		return $this->addNewGuestGroup($reply);
 	}
 
 }
