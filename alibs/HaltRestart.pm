@@ -123,7 +123,7 @@ sub Set
 	}
 	else
 	{
-		system("echo '$min $hour $day $mon * root $command' > /etc/cron.d/oss.HaltRestart");
+		system("echo '$min $hour $day $mon * root $command && rm /etc/cron.d/oss.HaltRestart' > /etc/cron.d/oss.HaltRestart");
 		system("echo  >> /etc/cron.d/oss.HaltRestart" );
 	}
 
