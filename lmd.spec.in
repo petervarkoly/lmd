@@ -86,7 +86,7 @@ fi
  
 %files
 %defattr(-,root,root)
-%config /etc/logrotate.d/lmd
+%config(noreplace) /etc/logrotate.d/lmd
 /usr/share/lmd
 /var/adm/fillup-templates/sysconfig.lmd
 /usr/sbin/rclmd
