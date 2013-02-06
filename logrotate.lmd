@@ -6,7 +6,7 @@
     missingok
     notifempty
     size +4096k
-    create 640 news news
+    create 640 root root
     sharedscripts
     postrotate
         /etc/init.d/lmd restart > /dev/null
