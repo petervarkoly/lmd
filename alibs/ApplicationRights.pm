@@ -28,7 +28,7 @@ sub interface
 		"default",
 		"toggle",
 		"filetree_dir_open",
-		"toggleall"
+		"apply"
 	];
 
 }
@@ -111,6 +111,7 @@ sub default
 	{
 		push @ret, { rightaction    => 'toggle' };
 	}
+	push @ret, { rightaction    => 'apply' };
 	return \@ret;
 }
 
@@ -146,4 +147,11 @@ sub toggle
 	$this->default($reply);
 }
 
+sub apply
+{
+	my $this   = shift;
+	my $reply  = shift;
+	$this->rc('lmd','restart');
+	$this->default($reply);
+}
 1;
