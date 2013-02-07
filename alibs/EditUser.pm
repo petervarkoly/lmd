@@ -337,6 +337,11 @@ sub editUser
 	my @users  = split /\n/, $reply->{users}; 
 	return noUser() if( ! scalar @users );
 
+	if( exists($reply->{warning} ) ){
+		return [ { ERROR => $reply->{warning} } ]
+	}
+
+	my $actrole= main::GetSessionValue('role');
 	my $dn     = $users[0];
 	my @ret    = ();
 	my $user   = $this->get_user($dn,\@userAttributeList);
@@ -423,6 +428,15 @@ sub editUser
 			}
 			$val = \@rasaccess ;
 		}
+	
+		if( $attr eq 'sn' ){
+			push @ret, { name => $attr, value => $val, attributes => [ type => 'string' ] };
+			next;
+		}
+		if( $attr eq 'givenname' ){
+			push @ret, { name => $attr, value => $val, attributes => [ type => 'string' ] };
+			next;
+		}
 		push @ret, { $attr => $val };
 		if( $attr =~ /^susemailacceptaddress$/ )
 		{
@@ -452,6 +466,14 @@ sub setChanges
 {
 	my $this   = shift;
 	my $reply  = shift;
+
+	if( $reply->{sn} eq '' ){
+		$reply->{warning} = main::__('Enter the lastname!')."<BR>";
+	}
+	if( $reply->{givenname} eq '' ){
+		$reply->{warning} = main::__('Enter the firstname!');
+	}
+
 	if( $reply->{new}->{addr}->{newsusemailacceptaddress} ne '' && defined $reply->{new}->{addr}->{domains} )
 	{
 		$reply->{newsusemailacceptaddress} = $reply->{new}->{addr}->{newsusemailacceptaddress}.'@'.$reply->{new}->{addr}->{domains};
@@ -467,7 +489,8 @@ sub setChanges
 		}
 	}
 
-	$this->editUser( { users => $reply->{dn}} );
+	$reply->{users} = $reply->{dn};
+	$this->editUser( $reply );
 }
 
 sub changeUserState
