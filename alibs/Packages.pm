@@ -48,7 +48,7 @@ sub getCapabilities
 		 { variable     => [ "install",    [ type => "action" ] ] },
 		 { variable     => [ "enabled",    [ type => "boolean" ] ] },
 		 { variable     => [ "refresh",    [ type => "boolean" ] ] },
-		 { variable     => [ "install",    [ type => "boolean" ] ] }
+		 { variable     => [ "inst",       [ type => "boolean" ] ] }
 	];
 }
 
@@ -182,7 +182,7 @@ sub searchPackages
                         { action   => "Search" }
                 ];
 	}else{
-		system("zypper --no-gpg-checks --gpg-auto-import-keys -n se $filter | grep $filter > /tmp/my_zypfile");
+		system("zypper --no-gpg-checks --gpg-auto-import-keys -n se -t package  $filter | grep $filter > /tmp/my_zypfile");
 		my $packages = `cat /tmp/my_zypfile`;
 	        my @package = split("\n", $packages);
 	        my @split_line = split(/\|/, $package[3]);
@@ -203,7 +203,7 @@ sub searchPackages
 			$split_line[2] =~ s/\"/ /g;
 	                push @lines, { line => [ $counter,
 						{ name => 'number', value => $counter, attributes => [ type => 'label'] },
-	                                        { name => 'name', value => $split_line[1], attributes => [ type => 'label', help => "$split_line[2] ($split_line[3])"] },
+	                                        { name => 'name', value => $split_line[1], attributes => [ type => 'label', help => "$split_line[2]"] },
 	                                        { install  => main::__($instlabel) },
 						{ name => 'package_name', value => "$split_line[1]", attributes => [ type => 'hidden']},
 						{ name => 'install_deintall', value => "$instlabel", attributes => [ type => 'hidden']},
@@ -254,7 +254,7 @@ sub showUpdates
 						{ name => 'current_version', value => $split_line[3], attributes => [ type => 'label'] },
 						{ name => 'available_version', value => $split_line[4], attributes => [ type => 'label'] },
 						{ name => 'arch', value => $split_line[5], attributes => [ type => 'label'] },
-						{ install => 1 }
+						{ inst => 1 }
 					]};
 		}
 	}
@@ -287,7 +287,7 @@ sub applyUpdates
 	my $PACKAGES = "";
 	foreach my $i ( keys %{$reply->{packages}} )
 	{
-		$PACKAGES .= "$i " if( $reply->{packages}->{$i}->{install} );
+		$PACKAGES .= "$i " if( $reply->{packages}->{$i}->{inst} );
 	}
 	$PACKAGES =~ s/\s+/ /g;
         $PACKAGES = 'DATE=`/usr/share/oss/tools/oss_date.sh`
@@ -336,7 +336,7 @@ sub install
         }
 
 
-        my $p = `zypper se $package | grep $package`;
+        my $p = `zypper se -t package $package | grep $package`;
         if ($p eq '') {
                 return {
                         TYPE => 'ERROR',
