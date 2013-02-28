@@ -40,7 +40,7 @@ sub getCapabilities
 		 { order        => 30 },
 		 { variable     => [ "add",         [ type => "action", label => "" ] ] },
 		 { variable     => [ "ws",          [ type => "label", label => "workstation" ] ] },
-		 { variable     => [ "wsip",        [ type => "hidden", ] ] },
+		 { variable     => [ "wsip",        [ type => "string", label => "IP-address", readonly => undef  ] ] },
 		 { variable     => [ "workstation", [ type => "popup"   ] ] },
 		 { variable     => [ "activ",       [ type => "boolean" ] ] },
 		 { variable     => [ "delete",      [ type => "boolean" ] ] }
@@ -54,30 +54,26 @@ sub default
 	my @oldaccess = ( 'oldaccess' );
 	my %ws        = ();
 	my @lws       = ();
-	$ws{$this->get_school_config("SCHOOL_SERVER")}     = "admin";
-	$ws{$this->get_school_config("SCHOOL_MAILSERVER")} = "schoolserver";
-	push @lws , [ $this->get_school_config("SCHOOL_SERVER"),     "admin" ];
-	push @lws , [ $this->get_school_config("SCHOOL_MAILSERVER"), "schoolserver" ];
+	$ws{$this->get_school_config("SCHOOL_SERVER")}      = "admin";
+	$ws{$this->get_school_config("SCHOOL_MAILSERVER")}  = "schoolserver";
+	$ws{$this->get_school_config("SCHOOL_PRINTSERVER")} = "printserver";
+	push @lws , [ $this->get_school_config("SCHOOL_SERVER"),      "admin" ];
+	push @lws , [ $this->get_school_config("SCHOOL_MAILSERVER"),  "schoolserver" ];
+	push @lws , [ $this->get_school_config("SCHOOL_PRINTSERVER"), "printserver" ];
 	foreach( split /\n/, `oss_get_workstations.sh` )
 	{
 		my ($a,$b) = split / /,$_;
 		$ws{$b}    = $a;
 		push @lws , [ $b, $a ];
 	}
-	if( ! scalar @lws )
-	{
-		return {
-			TYPE => 'NOTICE',
-			MESSAGE => 'There are no workstations registered'
-		}
-	};
 	my $fw = get_file('/etc/sysconfig/SuSEfirewall2');
         $fw =~ /^FW_FORWARD_MASQ="(.*)"$/m;
         foreach my $access ( split /\s+/, $1 )
         {
-		my ( $from,$dest,$prot,$dp,$sp ) = split( /,/, $access);
+		my ( $from,$dest,$prot,$sp,$dp ) = split( /,/, $access);
+		next if( ! $from );
 		$sp = $dp if ( !defined $sp );
-		push @oldaccess, { line => [ "$dest-$dp", { extport => $sp } , { ws => $ws{$dest} } , { wsip => $dest }, { port => $dp }, { delete => 0 } ] };
+		push @oldaccess, { line => [ "$sp", { extport => $sp } , { ws => $ws{$dest} } , { wsip => $dest }, { port => $dp }, { delete => 0 } ] };
 	}
 	push @newaccess, { line => [ '1', { extport => '' } , { workstation => \@lws } , { port => '' }, { add => main::__('add') } ] };
 	
@@ -97,13 +93,16 @@ sub apply
 	my @FWP    = (); #firewall ports
 	my @FWR    = (); #firewall regel
 
-	foreach my $k ( keys %{$reply->{oldaccess}} )
+	foreach my $k ( sort {$a <=> $b} keys %{$reply->{oldaccess}} )
 	{
 		next if( $reply->{oldaccess}->{$k}->{delete} );
-		push @FWR, '0/0,'.$reply->{oldaccess}->{$k}->{wsip}.',tcp,'.$reply->{oldaccess}->{$k}->{port}.','.$reply->{oldaccess}->{$k}->{extport};
+		push @FWR, '0/0,'.$reply->{oldaccess}->{$k}->{wsip}.',tcp,'.$reply->{oldaccess}->{$k}->{extport}.','.$reply->{oldaccess}->{$k}->{port};
+		push @FWP, $reply->{oldaccess}->{$k}->{extport};
 	}
 	my $ACCESS = join " ", @FWR;
-	system("perl -pi -e 's/^FW_FORWARD_MASQ=.*\$/FW_FORWARD_MASQ=\"$ACCESS\"/' /etc/sysconfig/SuSEfirewall2");
+	my $PORTS  = join " ", @FWP;
+	system("perl -pi -e 's#^FW_SERVICES_EXT_TCP=.*\$#FW_SERVICES_EXT_TCP=\"$PORTS\"#' /etc/sysconfig/SuSEfirewall2");
+	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
 	$this->default;
 }
@@ -116,6 +115,8 @@ sub add
 	my $fw     = get_file('/etc/sysconfig/SuSEfirewall2');
 	$fw =~ /^FW_FORWARD_MASQ="(.*)"$/m;
 	my $ACCESS = $1;
+	$fw =~ /^FW_SERVICES_EXT_TCP="(.*)"$/m;
+	my $PORTS  = $1;
         foreach my $access ( split /\s+/, $1 )
         {
 		my ( $from,$dest,$prot,$dp,$sp ) = split( /,/, $access);
@@ -141,8 +142,12 @@ sub add
 		};
 	}
 
-	$ACCESS .= ' 0/0,'.$reply->{newaccess}->{1}->{workstation}.',tcp,'.$reply->{newaccess}->{1}->{port}.','.$reply->{newaccess}->{1}->{extport}; 
-	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#' /etc/sysconfig/SuSEfirewall2");
+	$ACCESS .= ' 0/0,'.$reply->{newaccess}->{1}->{workstation}.',tcp,'.$reply->{newaccess}->{1}->{extport}.','.$reply->{newaccess}->{1}->{port}; 
+	$PORTS .= ' '.$reply->{newaccess}->{1}->{extport};
+	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
+	system("perl -pi -e 's#^FW_SERVICES_EXT_TCP=.*\$#FW_SERVICES_EXT_TCP=\"$PORTS\"#' /etc/sysconfig/SuSEfirewall2");
+	system("perl -pi -e 's#^FW_MASQUERADE=.*\$#FW_MASQUERADE=\"yes\"#' /etc/sysconfig/SuSEfirewall2");
+	system('perl -pi -e \'s#FW_MASQ_NETS="0/0"#FW_MASQ_NETS=""#\'      /etc/sysconfig/SuSEfirewall2');
 	system("/sbin/SuSEfirewall2 start");
 
 	$this->default;
