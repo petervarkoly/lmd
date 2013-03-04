@@ -393,7 +393,8 @@ sub create_letters
 {
 	my $this  = shift;
 	my $reply = shift;
-	my $lang = main::GetSessionValue('lang');
+	my $file_info = $this->get_file_info("$reply->{line}");
+	my $lang = $file_info->{lang};
 	my @ret;
 
 	# subtitle
@@ -434,7 +435,8 @@ sub create_pdf
 	my $reply = shift;
 	my $tmp_csv_file = '/tmp/make_csv_file_for_leter.csv';
 	my $report_url = '/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/UserPasswordLetters.rptdesign';
-	my $lang = main::GetSessionValue('lang');
+	my $file_info = $this->get_file_info("$reply->{imp_log_file}");
+	my $lang = $file_info->{lang};
 
 	if( $reply->{store_text} ){	
 		write_file( "/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt.tmp", $reply->{text_letter});
@@ -461,7 +463,7 @@ sub create_pdf
 
 	my $new_file_content = '';
 	my $message = {};
-	my $allmessages = new Config::IniFiles( -file => '/usr/share/lmd/lang/base_'.uc(substr($this->{SYSCONFIG}->{SCHOOL_LANGUAGE},0,2)).'.ini' );
+	my $allmessages = new Config::IniFiles( -file => '/usr/share/lmd/lang/base_'.$lang.'.ini' );
 	my @parameters = $allmessages->Parameters('IMPORT_USER');
 	foreach(@parameters)
         {
@@ -477,7 +479,7 @@ sub create_pdf
 		my @files = split("\n", $import_files );
 		my $head = `cat $files[0]`;
 		my ($hd, @tmp) = split("\n", $head);
-		my $sep = get_sep("$hd");
+		my $sep = get_sep("$hd", $message);
 		my @head__ = split($sep, $hd);
 		my $i = 0;
 		my $user_login_pos;
@@ -507,7 +509,7 @@ sub create_pdf
 		foreach my $head_it (sort keys %head_h){
 			$new_file_content .= $head_h{$head_it}.",";
 		}
-		my $class_ = uc(main::__('class'));
+		my $class_ = uc($message->{'class'}); #uc(main::__('class'));
 		if( $new_file_content !~ /(.*)$class_(.*)/){
 			$new_file_content .= $class_.",";
 		}
@@ -524,10 +526,10 @@ sub create_pdf
 		my $file_content = cmd_pipe("cat $importpath_file");
 		my @splt_file_content = split("\n", $file_content);
 		my $hd = shift @splt_file_content;
-		my $sep = get_sep("$hd");
+		my $sep = get_sep("$hd", $message);
 		$hd =~ s/$sep/,/g;
 		$new_file_content .= $hd;
-		my $class_ = uc(main::__('class'));
+		my $class_ = uc($message->{'class'}); #uc(main::__('class'));
 		if( $new_file_content !~ /(.*)$class_(.*)/){
 			$new_file_content .= ",".$class_.",";
 		}
@@ -545,7 +547,7 @@ sub create_pdf
 	}
 	write_file( $tmp_csv_file, $new_file_content);
 
-	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url" );
+	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
 	my $letter_txt = cmd_pipe("cat /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt");
 	my $csv_file = `basename '$tmp_csv_file'`; chomp $csv_file;
 	my $cmd = 'java -jar /usr/share/lmd/tools/JavaBirt/JavaBirt.jar REPORT_URL='.$report_url.' COMMAND=EXECUTE OUTPUT=pdf CSV_HOME_DIR=/tmp CSV_FILE='.$csv_file.' PASSWORD_LETTER_TEXT="'.$letter_txt.'"';
@@ -571,13 +573,14 @@ sub create_pdf
 sub get_sep
 {
 	my $hd       = shift;
+	my $msg      = shift;
 	my $sep      = "";
 	my $muster   = "";
 	my @attr_ext = ();
 	foreach my $attr (@userAttributes, @additionalUserAttributes)
 	{
 		$attr = lc($attr);
-		my $name  = uc(main::__($attr));
+		my $name  = $msg->{$attr}; #uc(main::__($attr));
 		push @attr_ext, $name;
 	}
 	foreach my $i (sort @attr_ext){
@@ -715,8 +718,12 @@ sub get_file_info
 	$hash{import_param} = '';
 	$hash{test_import} = main::__('Real Import');
 	$hash{create_letters} = 1;
+	$hash{lang} = '';
 	foreach my $i (@param){
 		my ($key, $value) = split("=",$i);
+		if( $key eq "lang" ){
+			$hash{lang} = $value; next;
+		}
 		if( ($key eq "test") and ($value eq "0")){
 			$hash{test_import} = main::__('Test Import');
 			$value = main::__("Yes");
