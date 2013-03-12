@@ -1,4 +1,5 @@
 # LMD PrinterPriceManagement  modul:
+# Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 
 package PrinterPriceManagement;
@@ -53,8 +54,8 @@ sub getCapabilities
 		{ allowedRole  => 'sysadmins' },
 		{ allowedRole  => 'teachers' },
 		{ allowedRole  => 'teachers,sysadmins' },
-		{ category     => 'User' },
-		{ order        => 70 },
+		{ category     => 'Network' },
+		{ order        => 110 },
 		{ variable     => [ "class",                  [ type => "list", size=>"10", multiple=>"true" ] ] },
 		{ variable     => [ "workgroup",              [ type => "list", size=>"10", multiple=>"true" ] ] },
 		{ variable     => [ "role",                   [ type => "list", size=>"10", multiple=>"true" ] ] },
@@ -66,11 +67,17 @@ sub getCapabilities
 	];
 }
 
+my $euro = " €";
+if( ! utf8::is_utf8($euro) ){
+	$euro = encode("utf8", decode("utf8", $euro));
+}else{
+	$euro = encode("utf8", $euro);
+}
+
 sub default
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my @filter = ('filter' );
 	my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search();
 	my @ret;
 
@@ -115,16 +122,18 @@ sub printing_price_manager
 {
 	my $this  = shift;
 	my @lines = ( 'printers' );
+	my $lang  = main::GetSessionValue('lang'); 
 	push @lines, { head => [ 'printer', 'recordtype', 'prices', 'edit', 'delete' ]};
 
 	my $sth = $this->{DBH}-> prepare("SELECT Id, Printer, RecordType, Price FROM PrintingPrice");
 	$sth->execute;
 
 	while (my $hashref = $sth -> fetchrow_hashref() ){
+		if( $lang eq 'DE' ){ ${$hashref}{Price} =~ s/\./,/ }
 		push @lines, { line => [ ${$hashref}{Id},
 				{ name => 'printer', value  => ${$hashref}{Printer}, "attributes"=> [ type => "label" ] },
 				{ name => 'recordtype', value => main::__("${$hashref}{RecordType}"), "attributes" => [ type => "label" ] },
-				{ name => 'price',value => "${$hashref}{Price}".encode("utf8", " €"), "attributes" => [ type => "label" ] },
+				{ name => 'price',value => "${$hashref}{Price}".$euro, "attributes" => [ type => "label" ] },
 				{ edit_printing_price => main::__('edit')},
 				{ del_printing_price => main::__('delete')}
 			]};
@@ -172,7 +181,7 @@ sub add_new_printing_price
 	push @ret, { label => main::__('Please add the following configuration parameters:') };
 	push @ret, { name => 'printer', value => [ @printername, '---DEFAULTS---', "$reply->{printer}" ], attributes => [ type => 'popup'] };
 	push @ret, { name => 'recordtype', value => [ ['Page', main::__('Page')], ['Job', main::__('Job')], '---DEFAULTS---', "$reply->{recordtype}"], attributes => [ type => 'popup'] };
-	push @ret, { name => 'price', value => "$reply->{price}", attributes => [ type => 'string', backlabel => encode("utf8","€")] };
+	push @ret, { name => 'price', value => "$reply->{price}", attributes => [ type => 'string', backlabel => $euro] };
 	push @ret, { action => 'ppm_cancel' };
 	push @ret, { action => 'add_printing_price' };
 	return \@ret;
@@ -183,19 +192,21 @@ sub add_printing_price
 	my $this  = shift;
 	my $reply = shift;
 	my $msg   = '';
+	my $lang  = main::GetSessionValue('lang');
 	if( !$reply->{printer} ){
 		$msg .= main::__('Please select printer!').'<BR>';
 	}
 	if( !$reply->{recordtype} ){
 		$msg .= main::__('Please select the printing invoicing type (either by pages or by jobs)!').'<BR>';
 	}
-	if( !$reply->{price} or ($reply->{price} !~ /[0-9\.]{1,5}/) ){
+	if( !$reply->{price} or ($reply->{price} !~ /[0-9\,\.]{1,5}/) ){
 		$msg .= main::__('Please assign a correct price for the invoice type!').'<BR>';
 	}
 	if( $msg ){
 		$reply->{warning} = $msg;
 		return $this->add_new_printing_price($reply);
 	}
+	if( $lang eq 'DE' ){ $reply->{price} =~ s/,/\./ }
 
 	my $sth   = $this->{DBH}->prepare("INSERT INTO PrintingPrice (Id, Printer, RecordType, Price) VALUES (NULL, '$reply->{printer}', '$reply->{recordtype}', '$reply->{price}')");
 	$sth->execute;
@@ -215,6 +226,7 @@ sub edit_printing_price
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $lang  = main::GetSessionValue('lang');
 	my $sth   = $this->{DBH}->prepare("SELECT Id, Printer, RecordType, Price FROM PrintingPrice WHERE Id = $reply->{line}");
 	$sth->execute;
 	my $hashref = $sth->fetchrow_hashref();
@@ -227,7 +239,8 @@ sub edit_printing_price
 	push @ret, { label => main::__('Please add the following configuration parameters:') };
 	push @ret, { name => 'printer', value => ${$hashref}{Printer} || $reply->{printer_h} , "attributes" => [type => "label"]};
 	push @ret, { name => 'recordtype', value => [ ['Page', main::__('Page')], ['Job', main::__('Job')], '---DEFAULTS---', ${$hashref}{RecordType} ], attributes => [ type => 'popup']};
-	push @ret, { name => 'price', value => ${$hashref}{Price}, attributes => [ type => 'string', backlabel => encode("utf8","€")]};
+	if( $lang eq 'DE' ){ ${$hashref}{Price} =~ s/\./,/ }
+	push @ret, { name => 'price', value => ${$hashref}{Price}, attributes => [ type => 'string', backlabel => $euro]};
 	push @ret, { name => 'id', value => ${$hashref}{Id}, attributes => [ type => 'hidden' ] };
 	push @ret, { name => 'printer_h', value => ${$hashref}{Printer} , "attributes" => [type => "hidden"]};
 	push @ret, { action => 'ppm_cancel' };
@@ -239,6 +252,8 @@ sub save_printing_price
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $lang  = main::GetSessionValue('lang');
+	if( $lang eq 'DE' ){ $reply->{price} =~ s/,/\./ }
         if( !$reply->{price} or ($reply->{price} !~ /[0-9\.]{1,5}/) ){
                 $reply->{warning} = main::__('Please assign a correct price for the invoice type!').'<BR>';
 		return $this->edit_printing_price($reply);
@@ -379,6 +394,7 @@ sub invoicing_payment
 	my $this = shift;
 	my $reply = shift;
 	my $name  = $reply->{name} || '*';
+	my $lang  = main::GetSessionValue('lang');
 	my @role  = split /\n/, $reply->{filter}->{line}->{role}  || ();
 	my @group = split /\n/, $reply->{filter}->{line}->{workgroup} || ();
 	my @class = split /\n/, $reply->{filter}->{line}->{class} || ();
@@ -409,6 +425,7 @@ sub invoicing_payment
 	push @invoicing_payment, { head => [ 'invoice_number', 'user', 'payment_date', 'summary', 'invoice_paying' ] };
 	while (my $hashref = $sth->fetchrow_hashref() ){
 		my $invoice_paying = 1;
+		if( $lang eq 'DE' ){ ${$hashref}{PaymentSum} =~ s/\./,/ }
 		if( ${$hashref}{DateOfPayment} eq '0000-00-00 00:00:00' ){$invoice_paying = '0'; ${$hashref}{DateOfPayment} = ''}
 		push @invoicing_payment, { line => [ "${$hashref}{Id}",
 						{ name => 'invoce_number', value => ${$hashref}{InvoiceNumber}, attributes => [ type => 'label'] },
@@ -467,11 +484,14 @@ sub details_invoice
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $lang  = main::GetSessionValue('lang');
 	my $sth = $this->{DBH}->prepare("SELECT * FROM PrintingLog WHERE PaymentId='$reply->{line}'");
 	$sth->execute;
 
 	my @paiddetails = ( 'details' );
 	while (my $hashref = $sth->fetchrow_hashref() ){
+		${$hashref}{Price} = sprintf('%8.2f',${$hashref}{Price}).$euro;
+		if( $lang eq 'DE' ){ ${$hashref}{Price} =~ s/\./,/ }
 		push @paiddetails, { line => [ 'sum',
 					{ name => 'printer', value => ${$hashref}{Printer}, attributes => [ type => 'label'] },
 					{ name => 'printing_datetime', value => ${$hashref}{DateTime}, attributes => [ type => 'label'] },
@@ -495,7 +515,9 @@ sub details_invoice
 	}else{
 		push @ret, { name => 'date_of_payment', value => "${$hashref}{DateOfPayment}", attributes => [ type => 'label' ] };
 	}
-	push @ret, { name => 'summary', value => "${$hashref}{PaymentSum}", attributes => [ type => 'label' ] };
+	${$hashref}{PaymentSum} = sprintf('%8.2f',${$hashref}{PaymentSum}).$euro;
+	if( $lang eq 'DE' ){ ${$hashref}{PaymentSum} =~ s/\./,/ }
+	push @ret, { name => 'summary', value => ${$hashref}{PaymentSum}, attributes => [ type => 'label' ] };
 	push @ret, { label  => main::__('Related Printing Related To Invoice :') };
 	push @ret, { table  => \@paiddetails };
 	push @ret, { name => 'where', value => $reply->{invoicing_payment}->{$reply->{line}}->{where}, attributes => [ type => 'hidden'] };
@@ -527,8 +549,10 @@ sub download_invoice
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $lang = uc(substr($this->{SYSCONFIG}->{SCHOOL_LANGUAGE},0,2));
 	my $report_url = "/usr/share/lmd/tools/JavaBirt/Reports/PrinterPriceManagement.rptdesign";
 	my ($db_password) = parse_file('/root/.my.cnf',"password=");
+	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
 
 	my $cmd = "java -jar /usr/share/lmd/tools/JavaBirt/JavaBirt.jar REPORT_URL=$report_url COMMAND=EXECUTE OUTPUT=pdf #DB_DRIVERCLASS=com.mysql.jdbc.Driver #DB_URL=jdbc:mysql://localhost/lmd #DB_USER=root #DB_PWD=$db_password PAYMENT_ID=$reply->{line}";
 	my $result = cmd_pipe("$cmd");
