@@ -178,6 +178,7 @@ if( $action eq 'insertDIFF' )
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "DESCRITION=$description");
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "VERSION=$version");
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "TYPE=DISKDIFF");
+		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "CATEGORIE=OSSPkg");
 		$msg = "OK";
 	   }
 	}
@@ -257,9 +258,10 @@ if( $action eq 'getPRODUCTKEY' )
 		my $obj = $oss->search_vendor_object_for_vendor( 'productkeys', $sw_dn);
 		if( defined $obj->[0] ){
 			foreach my $prodkey_dn ( @$obj ){
-				my $key   = $oss->get_attribute($prodkey_dn, 'configurationKey');
+				my $key = $oss->get_attribute($prodkey_dn, 'configurationKey');
+				my $licenckey = $oss->get_config_value($prodkey_dn, 'PRODUCT_KEY');
 				if( $oss->get_vendor_object( $sw_dn, 'productkeys', $key, "$hostname") ){
-					$prodkey = $key." ALLOCATION_TYPE ".$allocation_type;
+					$prodkey = $licenckey." ALLOCATION_TYPE ".$allocation_type;
 					last;
 				}
 			}
