@@ -54,12 +54,19 @@ sub default
 	my @oldaccess = ( 'oldaccess' );
 	my %ws        = ();
 	my @lws       = ();
-	$ws{$this->get_school_config("SCHOOL_SERVER")}      = "admin";
-	$ws{$this->get_school_config("SCHOOL_MAILSERVER")}  = "schoolserver";
-	$ws{$this->get_school_config("SCHOOL_PRINTSERVER")} = "printserver";
-	push @lws , [ $this->get_school_config("SCHOOL_SERVER"),      "admin" ];
-	push @lws , [ $this->get_school_config("SCHOOL_MAILSERVER"),  "schoolserver" ];
-	push @lws , [ $this->get_school_config("SCHOOL_PRINTSERVER"), "printserver" ];
+	if( ! $this->{MAILSERVER_LOCAL} ) {
+		$ws{$this->get_school_config("SCHOOL_MAILSERVER")}  = "schoolserver";
+		push @lws , [ $this->get_school_config("SCHOOL_MAILSERVER"),  "schoolserver" ];
+	}
+
+	if( ! $this->{PRINTSERVER_LOCAL} ) {
+		$ws{$this->get_school_config("SCHOOL_PRINTSERVER")} = "printserver";
+		push @lws , [ $this->get_school_config("SCHOOL_PRINTSERVER"), "printserver" ];
+	}
+	if( ! $this->{PROXYSERVER_LOCAL} ) {
+		$ws{$this->get_school_config("SCHOOL_PROXY")} = "proxy";
+		push @lws , [ $this->get_school_config("SCHOOL_PROXY"), "proxy" ];
+	}
 	foreach( split /\n/, `oss_get_workstations.sh` )
 	{
 		my ($a,$b) = split / /,$_;
@@ -90,7 +97,6 @@ sub apply
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my @FWP    = (); #firewall ports
 	my @FWR    = (); #firewall regel
 
 	foreach my $k ( sort {$a <=> $b} keys %{$reply->{oldaccess}} )
@@ -100,8 +106,6 @@ sub apply
 		push @FWP, $reply->{oldaccess}->{$k}->{extport};
 	}
 	my $ACCESS = join " ", @FWR;
-	my $PORTS  = join " ", @FWP;
-	system("perl -pi -e 's#^FW_SERVICES_EXT_TCP=.*\$#FW_SERVICES_EXT_TCP=\"$PORTS\"#' /etc/sysconfig/SuSEfirewall2");
 	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
 	$this->default;
@@ -115,8 +119,6 @@ sub add
 	my $fw     = get_file('/etc/sysconfig/SuSEfirewall2');
 	$fw =~ /^FW_FORWARD_MASQ="(.*)"$/m;
 	my $ACCESS = $1;
-	$fw =~ /^FW_SERVICES_EXT_TCP="(.*)"$/m;
-	my $PORTS  = $1;
         foreach my $access ( split /\s+/, $1 )
         {
 		my ( $from,$dest,$prot,$dp,$sp ) = split( /,/, $access);
@@ -145,7 +147,6 @@ sub add
 	$ACCESS .= ' 0/0,'.$reply->{newaccess}->{1}->{workstation}.',tcp,'.$reply->{newaccess}->{1}->{extport}.','.$reply->{newaccess}->{1}->{port}; 
 	$PORTS .= ' '.$reply->{newaccess}->{1}->{extport};
 	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
-	system("perl -pi -e 's#^FW_SERVICES_EXT_TCP=.*\$#FW_SERVICES_EXT_TCP=\"$PORTS\"#' /etc/sysconfig/SuSEfirewall2");
 	system("perl -pi -e 's#^FW_MASQUERADE=.*\$#FW_MASQUERADE=\"yes\"#' /etc/sysconfig/SuSEfirewall2");
 	system('perl -pi -e \'s#FW_MASQ_NETS="0/0"#FW_MASQ_NETS=""#\'      /etc/sysconfig/SuSEfirewall2');
 	system("/sbin/SuSEfirewall2 start");
