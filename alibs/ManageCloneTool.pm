@@ -648,8 +648,19 @@ sub install_default_software
 			foreach my $sw_user_dn ( @$obj ){
 				my $sw_name = $this->get_attribute( $sw_user_dn, 'configurationKey' );
 				my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$this->{SYSCONFIG}->{COMPUTERS_BASE};
-				my $status= 1;
-				if( $this->exists_dn( "o=productkeys,".$sw_dn )  ){
+				my $allocationtype = $this->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
+				my $status = 0;
+				if( $allocationtype eq "NO_LICENSE_KEY" )
+				{
+					$status = 1;
+				}
+				elsif( !$this->exists_dn("o=productkeys,".$sw_dn) and ($allocationtype ne "NO_LICENSE_KEY"))
+				{
+					$status = 0;
+					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>";
+				}
+				else
+				{
 					$status = $this->prodkey_allocation($sw_dn, $ws_name);
 					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
 				}
@@ -666,13 +677,25 @@ sub install_default_software
 		{
 			foreach my $sw_name ( @$SOFTWARE ){
 				my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$this->{SYSCONFIG}->{COMPUTERS_BASE};
-				my $status= 1;
-				if( $this->exists_dn( "o=productkeys,".$sw_dn )  ){
+				my $allocationtype = $this->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
+				my $status = 0;
+				if( $allocationtype eq "NO_LICENSE_KEY" )
+				{
+					$status = 1;
+				}
+				elsif( !$this->exists_dn("o=productkeys,".$sw_dn) and ($allocationtype ne "NO_LICENSE_KEY"))
+				{
+					$status = 0;
+					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>";
+				}
+				else
+                                {
 					$status = $this->prodkey_allocation($sw_dn, $ws_name);
 					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
 				}
 				if($status){
 					$this->create_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled");
+					cmd_pipe("chmod -R 777 /srv/itool/swrepository/$sw_name/");
 					insert_host_to_wpkghostsxml($ws_name);
 					if( !-e "/srv/itool/swrepository/logs/$ws_name/" ){
 						cmd_pipe("mkdir /srv/itool/swrepository/logs/$ws_name/");
