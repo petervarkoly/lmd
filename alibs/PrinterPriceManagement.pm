@@ -549,8 +549,10 @@ sub download_invoice
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $lang = uc(substr($this->{SYSCONFIG}->{SCHOOL_LANGUAGE},0,2));
 	my $report_url = "/usr/share/lmd/tools/JavaBirt/Reports/PrinterPriceManagement.rptdesign";
 	my ($db_password) = parse_file('/root/.my.cnf',"password=");
+	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
 
 	my $cmd = "java -jar /usr/share/lmd/tools/JavaBirt/JavaBirt.jar REPORT_URL=$report_url COMMAND=EXECUTE OUTPUT=pdf #DB_DRIVERCLASS=com.mysql.jdbc.Driver #DB_URL=jdbc:mysql://localhost/lmd #DB_USER=root #DB_PWD=$db_password PAYMENT_ID=$reply->{line}";
 	my $result = cmd_pipe("$cmd");
