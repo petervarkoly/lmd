@@ -145,6 +145,7 @@ sub interface
                 "default",
                 "del_room",
                 "DHCP",
+		"editPC",
                 "getCapabilities",
                 "modifyRoom",
                 "realy_delete",
@@ -163,7 +164,7 @@ sub interface
 		"selectWlanUser",
 		"setWlanUser",
 		"ANON_DHCP",
-		"insert_in_to_room",
+		"insert_in_to_room"
         ];
 }
 
@@ -194,6 +195,7 @@ sub getCapabilities
 		{ variable     => [ 'dn',           [ type => 'hidden' ]]  },
 		{ variable     => [ 'roomtype',     [ type => 'hidden' ]]  },
 		{ variable     => [ 'set_free',     [ type => 'boolean' ]]  },
+		{ variable     => [ 'editPC',       [ type => 'action' , label => 'edit' ]] },
 		{ variable     => [ 'room',         [ type => 'action' ]] },
 		{ variable     => [ 'control',      [ type => 'action' ]] },
 		{ variable     => [ 'del_room',     [ type => 'action', label => 'delete' ]] },
@@ -292,9 +294,9 @@ sub default
 		return 
 		[
 		   { table  =>  \@lines },
-		   { action => "scanPCs" },
-		   { action => "addNewRoom" },
-		   { action => "setRooms" }
+		   { rightaction => "scanPCs" },
+		   { rightaction => "addNewRoom" },
+		   { rightaction => "setRooms" }
 		];
 	}
 	else
@@ -508,7 +510,7 @@ sub room
 		{
 			my $wlan     = ( $this->get_config_value($hosts{$hostname}->{dn},'WLANACCESS') eq "yes" ) ? 1 : 0;
 			push @lines, { line => [ $hosts{$hostname}->{dn}, 
-						{ description => $hostname },
+						{ editPC      => $hostname },
 						{ hwaddress   => $hosts{$hostname}->{hwaddress} }, 
 						{ hwconfig    => \@hwconf }, 
 						{ DHCP	      => 'DHCP' },
@@ -521,8 +523,8 @@ sub room
 		else
 		{
 			push @lines, { line => [ $hosts{$hostname}->{dn}, 
-						{ description => $hostname }, 
-						{ name => 'hwaddress', value => $hosts{$hostname}->{hwaddress}, attributes => [type => 'string'] },
+						{ editPC      => $hostname }, 
+						{ hwaddress   => $hosts{$hostname}->{hwaddress} }, 
 						{ hwconfig    => \@hwconf }, 
 						{ DHCP	      => 'DHCP' },
 						{ master      => $master },
@@ -543,6 +545,54 @@ sub room
 	   { name => 'action' , value  => 'modifyRoom', attributes => [ label => 'apply' ]  }
 	];
 
+}
+
+sub editPC
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $dn 	   = $reply->{line} || $reply->{dn};
+	my $hw     = $this->get_config_value($dn,'HW');
+        my %parts  = ();
+	my %os     = ();
+	my %join   = ();
+	my $result = $this->get_attributes( 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE},
+		                                            ['configurationvalue','description']);
+        foreach ( @{$result->{'configurationvalue'}} )
+        {
+               if( /PART_(.*)_DESC=(.*)/)
+               {
+                  $parts{$1} = $2;
+               }
+               if( /PART_(.*)_OS=(.*)/)
+               {
+                  $os{$1} = $2;
+               }
+               if( /PART_(.*)_JOIN=(.*)/)
+               {
+                  $join{$1} = $2;
+               }
+        }
+	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
+	$this->create_vendor_object($dn,'EXTIS','SERIALNUMBER',  $reply->{serial})   if( defined $reply->{serial} );
+	$this->create_vendor_object($dn,'EXTIS','INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
+	push @ret, { serial   => @{$this->get_vendor_object($dn,'EXTIS','SERIALNUMBER')}[0]   };
+	push @ret, { inventar => @{$this->get_vendor_object($dn,'EXTIS','INVENTARNUMBER')}[0] };
+	if( $this->get_config_value($dn,'MASTER') ne "yes" )
+	{# Do not set separate values for master!
+		foreach my $p ( sort keys %parts  )
+		{
+			next if ( $join{$p} ne "Domain" );
+			$this->set_config_value($dn,'PART_'.$p.'_ProductID',$reply->{"regcode-$p"}) if( $reply->{"regcode-$p"} );
+			push @ret, { name  => "regcode-$p", 
+				     value => $this->get_config_value($dn,'PART_'.$p.'_ProductID'),
+				     attributes => [ type => "string", label => $os{$p}.' '.$parts{$p}." ProductID" ] };
+		}
+	}
+	push @ret, { dn     => $dn };
+	push @ret, { action => 'cancel' };
+	push @ret, { name   => 'action', value => 'editPC', attributes => [ label => 'apply' ] };
+	return \@ret;
 }
 
 sub modifyRoom
