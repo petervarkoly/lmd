@@ -1199,7 +1199,7 @@ sub scanPCs
 		$reply->{dn}   = $reply->{rooms};
 		my @hosts      = $this->get_free_pcs_of_room($reply->{rooms});
 		$reply->{hwaddresses} =~ /([0-9a-f]{2})[-:]?([0-9a-f]{2})[-:]?([0-9a-f]{2})[-:]?([0-9a-f]{2})[-:]?([0-9a-f]{2})[-:]?([0-9a-f]{2})/i;
-		$reply->{hwaddresses} = "$1:$2:$3:$3:$5:$6";
+		$reply->{hwaddresses} = "$1:$2:$3:$4:$5:$6";
 		my $dn         = $this->addPC($reply);
 		if( ref $dn eq 'HASH')
 		{
