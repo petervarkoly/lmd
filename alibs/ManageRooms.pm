@@ -159,6 +159,7 @@ sub interface
                 "setRooms",
                 "setRoomType",
 		"setWlanUser",
+		"stateOfRooms",
 		"change_room",
 		"apply_change_room",
 		"selectWlanUser",
@@ -179,43 +180,53 @@ sub getCapabilities
                 { allowedRole  => 'teachers,sysadmins' },
                 { category     => 'Network' },
 		{ order        => 10 },
-		{ variable     => [ 'freerooms',    [ type => 'popup' ]] },
-		{ variable     => [ 'rooms',        [ type => 'popup' ]] },
-		{ variable     => [ 'dhcpOptions',  [ type => 'popup' ]] },
-		{ variable     => [ 'dhcpStatements',[ type => 'popup' ]] },
-		{ variable     => [ 'description',  [ type => 'label'  ] ]},
-		{ variable     => [ 'hwaddress',    [ type => 'string'  ] ]},
-		{ variable     => [ 'network',      [ type => 'label', ] ]},
-		{ variable     => [ 'addNewPC',     [ type => 'action' ] ]},
-		{ variable     => [ 'ANON_DHCP',    [ type => 'action' ] ]},
-		{ variable     => [ 'DHCP',         [ type => 'action' ] ]},
-		{ variable     => [ 'hwconfig',     [ type => 'popup', style => 'width:180px;' ]]  },
-		{ variable     => [ 'teachers',     [ type => 'list', size => '15', multiple=>"true" ]]  },
-		{ variable     => [ 'control_mode', [ type => 'translatedpopup' ]]  },
-		{ variable     => [ 'dn',           [ type => 'hidden' ]]  },
-		{ variable     => [ 'roomtype',     [ type => 'hidden' ]]  },
-		{ variable     => [ 'set_free',     [ type => 'boolean' ]]  },
-		{ variable     => [ 'editPC',       [ type => 'action' , label => 'edit' ]] },
-		{ variable     => [ 'room',         [ type => 'action' ]] },
-		{ variable     => [ 'control',      [ type => 'action' ]] },
-		{ variable     => [ 'del_room',     [ type => 'action', label => 'delete' ]] },
-		{ variable     => [ 'workstations', [ type => 'list', size => '10' ]]  },
-		{ variable     => [ 'hwaddresses',  [ type => 'text', rows => '10', cols => '20'  ]]},
-		{ variable     => [ 'wlanaccess',   [ type => 'boolean' ]]},
-		{ variable     => [ 'master',       [ type => 'boolean' ]]},
-		{ variable     => [ 'delete',       [ type => 'boolean' ]]},
-		{ variable     => [ 'change_room',  [ type => 'action' ]]},
-		{ variable     => [ 'apply_change_room',  [ type => 'action', label => 'apply_change_room' ]]},
-		{ variable     => [ 'free_busy',          [ type => 'img', style => 'margin-right:80px;' ]]},
+		{ variable     => [ 'apply_change_room', [ type => 'action', label => 'apply_change_room' ]]},
+		{ variable     => [ 'addNewPC',          [ type => 'action' ] ]},
+		{ variable     => [ 'ANON_DHCP',         [ type => 'action' ] ]},
+		{ variable     => [ 'DHCP',              [ type => 'action' ] ]},
+		{ variable     => [ 'change_room',       [ type => 'action' ]]},
+		{ variable     => [ 'editPC',            [ type => 'action' , label => 'edit' ]] },
+		{ variable     => [ 'room',              [ type => 'action' ]] },
+		{ variable     => [ 'control',           [ type => 'action' ]] },
+		{ variable     => [ 'del_room',          [ type => 'action', label => 'delete' ]] },
+		{ variable     => [ 'set_free',          [ type => 'boolean' ]]  },
+		{ variable     => [ 'wlanaccess',        [ type => 'boolean' ]]},
+		{ variable     => [ 'master',            [ type => 'boolean' ]]},
+		{ variable     => [ 'delete',            [ type => 'boolean' ]]},
+		{ variable     => [ 'free_busy',         [ type => 'img',    style => 'margin-right:80px;' ]]},
+		{ variable     => [ 'description',       [ type => 'label'  ] ]},
+		{ variable     => [ 'network',           [ type => 'label', ] ]},
+		{ variable     => [ 'users',             [ type => 'label', ] ]},
+		{ variable     => [ 'teachers',          [ type => 'list', size => '15', multiple=>"true" ]]  },
+		{ variable     => [ 'workstations',      [ type => 'list', size => '10' ]]  },
+		{ variable     => [ 'dn',                [ type => 'hidden' ]]  },
+		{ variable     => [ 'rdn',               [ type => 'hidden' ]]  },
+		{ variable     => [ 'roomtype',          [ type => 'hidden' ]]  },
+		{ variable     => [ 'freerooms',         [ type => 'popup' ]] },
+		{ variable     => [ 'rooms',             [ type => 'popup' ]] },
+		{ variable     => [ 'dhcpOptions',       [ type => 'popup' ]] },
+		{ variable     => [ 'dhcpStatements',    [ type => 'popup' ]] },
+		{ variable     => [ 'hwconfig',          [ type => 'popup', style => 'width:180px;' ]]  },
+		{ variable     => [ 'hwaddress',         [ type => 'string'  ] ]},
+		{ variable     => [ 'hwaddresses',       [ type => 'text', rows => '10', cols => '20'  ]]},
+		{ variable     => [ 'control_mode',      [ type => 'translatedpopup' ]]  },
 	];
 }
 
 sub default
 {
-	my $this 	= shift;
-	my $reply	= shift;
-	my $rooms	= undef; 
-	my $role	= main::GetSessionValue('role');
+	my $this   = shift;
+	my $reply  = shift;
+	my $rooms  = undef; 
+	my $role   = main::GetSessionValue('role');
+	my @head   = ();
+	push @head, { name => 'room',    attributes => [ label => main::__('room'),    help => main::__('Push the button to edit the room') ] },
+               { name => 'network', attributes => [ label => main::__('network')] },
+               { name => 'add',     attributes => [ label => main::__('add'),     help => main::__('Push the button to add a new workstation to the room') ] },
+               { name => 'DHCP',    attributes => [ label => 'DHCP',              help => main::__('Push the button to set special DHCP parameter for the room.') ] },
+               { name => 'hwconfig',attributes => [ label => main::__('hwconfig'),help => main::__('Select the standard workstation configuration for the room.') ] },
+               { name => 'control', attributes => [ label => main::__('control'), help => main::__('Push the button to edit control method for the room.') ] };
+        push @head, { name => 'delete',  attributes => [ label => main::__('delete'),  help => main::__('Push the button to delete room with all workstations.') ] };
 	if( main::GetSessionValue('role') eq 'teachers' )
 	{
 		$rooms = $this->get_rooms(main::GetSessionValue('dn'));
@@ -232,43 +243,17 @@ sub default
 	{
 		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
 	}
-	push @lines, { head => [
-                	{ name => 'room',    attributes => [ label => main::__('room'),    help => main::__('Push the button to edit the room') ] },
-                	{ name => 'network', attributes => [ label => main::__('network')] },
-                 	{ name => 'add',     attributes => [ label => main::__('add'),     help => main::__('Push the button to add a new workstation to the room') ] },
-                	{ name => 'DHCP',    attributes => [ label => 'DHCP',              help => main::__('Push the button to set special DHCP parameter for the room.') ] },
-                	{ name => 'hwconfig',attributes => [ label => main::__('hwconfig'),help => main::__('Select the standard workstation configuration for the room.') ] },
-                	{ name => 'control', attributes => [ label => main::__('control'), help => main::__('Push the button to edit control method for the room.') ] },
-			{ name => 'free_busy',  attributes => [ label => main::__('Free/Busy'),  help => main::__('If theres a tick mark then theres nobody logged into the clients PC in the given classroom. If theres an X mark then somebody is logged into the clients PC on that particular classroom.') ] },
-                	{ name => 'delete',  attributes => [ label => main::__('delete'),  help => main::__('Push the button to delete room with all workstations.') ] }
-			]
-		};
+	push @lines, { head => \@head };
+	
 
-	system("/usr/share/oss/tools/clean-up-sambaUserWorkstations.pl");
-	foreach my $i ( sort keys %tmp )
+	foreach my $desc ( sort keys %tmp )
 	{
-		my $dn = $tmp{$i};
+		my $dn = $tmp{$desc};
 		my @hwconf   = @{$this->get_HW_configurations(1)};
-		#my $cn       = $rooms->{$dn}->{"cn"}->[0];
-		my $desc     = $rooms->{$dn}->{"description"}->[0];
 		my $network  = $rooms->{$dn}->{"dhcprange"}->[0].'/'.$rooms->{$dn}->{'dhcpnetmask'}->[0];
 		my ( $control, $controller, $controllers )  = $this->get_room_control_state($dn);
 		my $hw       = $this->get_config_value($dn,'HW') || '-';
 		push @hwconf,  [ '---DEFAULTS---' ], [ $hw ];
-		my $img = '';
-		my $logged_users = $this->get_logged_users("$dn");
-		if( !keys %{$logged_users} ){
-			$img = `base64 /srv/www/oss/img/accept.png`;
-		}
-		foreach my $dn (sort keys %{$logged_users} ){
-			if( exists($logged_users->{$dn}->{user_name})){
-				$img = `base64 /srv/www/oss/img/delete.png`;
-				last;
-			}else{
-				$img = `base64 /srv/www/oss/img/accept.png`;
-			}
-		}
-
 		if( $desc =~ /^ANON_DHCP/ )
 		{
 			my $result = $this->{LDAP}->search( base => $this->{SYSCONFIG}->{DHCP_BASE}, filter => 'cn=Pool1' );
@@ -284,9 +269,11 @@ sub default
 		}
 		else
 		{
-			push @lines, { line => [ $dn ,  {room => $desc }, {network => $network}, {addNewPC=>main::__('add')}, { DHCP=>'DHCP'},
-							{ hwconfig => \@hwconf }, {control => main::__($control)} , { free_busy => "$img" },
-							{ del_room => main::__('delete') } ]}; 
+			my @line = ( $dn );
+			push @line, {room => $desc }, {network => $network}, {addNewPC=>main::__('add')}, { DHCP=>'DHCP'},
+				    { hwconfig => \@hwconf }, {control => main::__($control)} ;
+			push @line, { del_room => main::__('delete') };
+			push @lines, { line => \@line }; 
 		}
 	}
 	if( scalar(@lines) > 1)
@@ -294,6 +281,7 @@ sub default
 		return 
 		[
 		   { table  =>  \@lines },
+		   { rightaction => "stateOfRooms" },
 		   { rightaction => "scanPCs" },
 		   { rightaction => "addNewRoom" },
 		   { rightaction => "setRooms" }
@@ -303,11 +291,55 @@ sub default
 	{
 		return 
 		[
-		   { action => "scanPCs" },
-		   { action => "addNewRoom" },
-		   { action => "setRooms" }
+		   { action => "addNewRoom" }
 		];
 	}
+}
+
+sub stateOfRooms
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $rooms  = undef;
+	my $free   = `base64 /srv/www/oss/img/accept.png`;
+	my $busy   = `base64 /srv/www/oss/img/delete.png`;
+	system("/usr/share/oss/tools/clean-up-sambaUserWorkstations.pl");
+	if( main::GetSessionValue('role') eq 'teachers' )
+	{
+		$rooms = $this->get_rooms(main::GetSessionValue('dn'));
+	}
+	else
+	{
+		$rooms = $this->get_rooms('all');
+	}
+	my @lines       = ('rooms');
+	my @dns         = ();
+	my %tmp		= ();
+
+	foreach my $dn (keys %{$rooms})
+	{
+		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
+	}
+	foreach my $i ( sort keys %tmp )
+	{
+		my $dn = $tmp{$i};
+		my $users = "";
+		my $logged_users = $this->get_logged_users("$dn");
+		foreach my $dn (sort keys %{$logged_users} ){
+			$users .= $logged_users->{$dn}->{host_name}.': '.$logged_users->{$dn}->{user_cn}.'('.$logged_users->{$dn}->{user_name}.')<br>';
+		}
+		if( $users eq "" )
+		{
+			push @lines, { line => [ $dn , { description => $i }, { free_busy => $free } ] };
+		}
+		else
+		{
+			push @lines, { line => [ $dn , { description => $i }, { free_busy => $busy }, { network => $users } ] };
+		}
+	}
+	return [
+		{ table       => \@lines  }
+	];
 }
 
 sub DHCP
@@ -482,11 +514,12 @@ sub room
 {
 	my $this 	= shift;
 	my $reply	= shift;
+	my $rdn	        = $reply->{line} || $reply->{rdn};
 	my %hosts	= ();
 	my @lines	= ('ws');
-	my $description = $this->get_attribute($reply->{line},'description');
+	my $description = $this->get_attribute($rdn,'description');
 
-	foreach my $dn ( @{$this->get_workstations_of_room($reply->{line})} )
+	foreach my $dn ( @{$this->get_workstations_of_room($rdn)} )
 	{
 		my $hostname = $this->get_attribute($dn,'cn');
 		my $hwaddress= $this->get_attribute($dn,'dhcpHWAddress');
@@ -574,10 +607,10 @@ sub editPC
                }
         }
 	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
-	$this->create_vendor_object($dn,'EXTIS','SERIALNUMBER',  $reply->{serial})   if( defined $reply->{serial} );
-	$this->create_vendor_object($dn,'EXTIS','INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
-	push @ret, { serial   => @{$this->get_vendor_object($dn,'EXTIS','SERIALNUMBER')}[0]   };
-	push @ret, { inventar => @{$this->get_vendor_object($dn,'EXTIS','INVENTARNUMBER')}[0] };
+	$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})   if( defined $reply->{serial} );
+	$this->set_config_value($dn,'INVENTARNUMBER',$reply->{serial}) if( defined $reply->{inventar} );
+	push @ret, { serial   => $this->get_config_value($dn,'SERIALNUMBER')   };
+	push @ret, { inventar => $this->get_config_value($dn,'INVENTARNUMBER') };
 	if( $this->get_config_value($dn,'MASTER') ne "yes" )
 	{# Do not set separate values for master!
 		foreach my $p ( sort keys %parts  )
@@ -589,8 +622,9 @@ sub editPC
 				     attributes => [ type => "string", label => $os{$p}.' '.$parts{$p}." ProductID" ] };
 		}
 	}
-	push @ret, { dn     => $dn };
+	push @ret, { rdn    => get_parent_dn($dn) };
 	push @ret, { action => 'cancel' };
+	push @ret, { name   => 'action', value => 'room',   attributes => [ label => 'back' ] };
 	push @ret, { name   => 'action', value => 'editPC', attributes => [ label => 'apply' ] };
 	return \@ret;
 }
@@ -1205,8 +1239,8 @@ sub scanPCs
 		{
 			return $dn;
 		}
-		$this->create_vendor_object($dn,'EXTIS','SERIALNUMBER',$reply->{serial}) 		   if( $reply->{bserial} );
-		$this->create_vendor_object($dn,'EXTIS','INVENTARNUMBER', $reply->{inventar}) 		   if( $reply->{binventar} );
+		$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})   if( defined $reply->{serial} );
+		$this->set_config_value($dn,'INVENTARNUMBER',$reply->{serial}) if( defined $reply->{inventar} );
 		$this->create_vendor_object($dn,'EXTIS','COORDINATES', $reply->{row}.','.$reply->{column}) if( $reply->{bposition} );
 		if( $reply->{bimaging} )
 		{
