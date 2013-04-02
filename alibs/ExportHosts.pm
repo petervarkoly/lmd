@@ -151,9 +151,9 @@ sub exportHosts
 			}
 			else
 			{
-				my $inventary = $this->get_vendor_object($dn,'EXTIS','INVENTARNUMBER') ||'';
-				my $serial    = $this->get_vendor_object($dn,'EXTIS','SERIALNUMBER') ||'';
-				my $position  = $this->get_vendor_object($dn,'EXTIS','COORDINATES') ||'';
+				my $inventary = $this->get_config_value($dn,'INVENTARNUMBER') ||'';
+				my $serial    = $this->get_config_value($dn,'SERIALNUMBER') ||'';
+				my $position  = @{$this->get_vendor_object($dn,'EXTIS','COORDINATES')}[0] ||'';
 				$hash{$room_name}->{$pc_name} = "$pc_hw_config_description;$pc_hwaddress;$pc_ipaddress;$inventary;$serial;$position\n";
 			}
 		}
