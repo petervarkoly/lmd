@@ -607,8 +607,8 @@ sub editPC
                }
         }
 	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
-	$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})   if( defined $reply->{serial} );
-	$this->set_config_value($dn,'INVENTARNUMBER',$reply->{serial}) if( defined $reply->{inventar} );
+	$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})     if( defined $reply->{serial} );
+	$this->set_config_value($dn,'INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
 	push @ret, { serial   => $this->get_config_value($dn,'SERIALNUMBER')   };
 	push @ret, { inventar => $this->get_config_value($dn,'INVENTARNUMBER') };
 	if( $this->get_config_value($dn,'MASTER') ne "yes" )
@@ -623,6 +623,7 @@ sub editPC
 		}
 	}
 	push @ret, { rdn    => get_parent_dn($dn) };
+	push @ret, { dn     => $dn };
 	push @ret, { action => 'cancel' };
 	push @ret, { name   => 'action', value => 'room',   attributes => [ label => 'back' ] };
 	push @ret, { name   => 'action', value => 'editPC', attributes => [ label => 'apply' ] };
@@ -1239,8 +1240,8 @@ sub scanPCs
 		{
 			return $dn;
 		}
-		$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})   if( defined $reply->{serial} );
-		$this->set_config_value($dn,'INVENTARNUMBER',$reply->{serial}) if( defined $reply->{inventar} );
+		$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})     if( defined $reply->{serial} );
+		$this->set_config_value($dn,'INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
 		$this->create_vendor_object($dn,'EXTIS','COORDINATES', $reply->{row}.','.$reply->{column}) if( $reply->{bposition} );
 		if( $reply->{bimaging} )
 		{
