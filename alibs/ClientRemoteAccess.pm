@@ -103,7 +103,6 @@ sub apply
 	{
 		next if( $reply->{oldaccess}->{$k}->{delete} );
 		push @FWR, '0/0,'.$reply->{oldaccess}->{$k}->{wsip}.',tcp,'.$reply->{oldaccess}->{$k}->{extport}.','.$reply->{oldaccess}->{$k}->{port};
-		push @FWP, $reply->{oldaccess}->{$k}->{extport};
 	}
 	my $ACCESS = join " ", @FWR;
 	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
@@ -145,7 +144,6 @@ sub add
 	}
 
 	$ACCESS .= ' 0/0,'.$reply->{newaccess}->{1}->{workstation}.',tcp,'.$reply->{newaccess}->{1}->{extport}.','.$reply->{newaccess}->{1}->{port}; 
-	$PORTS .= ' '.$reply->{newaccess}->{1}->{extport};
 	system("perl -pi -e 's#^FW_FORWARD_MASQ=.*\$#FW_FORWARD_MASQ=\"$ACCESS\"#'        /etc/sysconfig/SuSEfirewall2");
 	system("perl -pi -e 's#^FW_MASQUERADE=.*\$#FW_MASQUERADE=\"yes\"#' /etc/sysconfig/SuSEfirewall2");
 	system('perl -pi -e \'s#FW_MASQ_NETS="0/0"#FW_MASQ_NETS=""#\'      /etc/sysconfig/SuSEfirewall2');
