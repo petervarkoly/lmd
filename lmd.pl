@@ -1506,7 +1506,7 @@ sub login
     }
     if( !$REQUEST->{ip} || $REQUEST->{ip} eq $oss->get_school_config('SCHOOL_PROXY') || $REQUEST->{ip} eq $oss->get_school_config('SCHOOL_SERVER') )
     {
-	    $REQUEST->{ip} = $oss->get_config_value($dn,'LOGGED_ON') || 'localhost';
+	    $REQUEST->{ip} = $oss->get_config_value($dn,'LOGGED_ON') || '127.0.0.1';
     }
     if( $result = $oss->login($dn,$REQUEST->{userpassword},$REQUEST->{ip},0) )
     {
