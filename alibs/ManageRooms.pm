@@ -1083,7 +1083,8 @@ sub addPC
 	#Now we do our work
 	foreach my $hw (@HWS)
 	{
-		$hw = uc($hw);
+		my ( $mac, $inventar, $serial ) = split /;/,$hw;
+		$hw = uc($mac);
 		if( !check_mac($hw) )
 		{
 		    return { TYPE => 'ERROR' ,
@@ -1130,6 +1131,8 @@ sub addPC
 		{
 			print STDERR $this->{ERROR}->{text}."\n";
 		}
+                $this->set_config_value($HOSTDN,'SERIALNUMBER',  $serial)   if( defined $serial );
+                $this->set_config_value($HOSTDN,'INVENTARNUMBER',$inventar) if( defined $inventar );
 		$host = shift @hosts;
 	}
         $reply->{dn} =~ /cn=config1,cn=(.*),ou=DHCP/;
