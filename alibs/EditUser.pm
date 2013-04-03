@@ -225,7 +225,7 @@ sub searchUsersFiles
        {
                $list .= $this->get_attribute($dn,'cn').', ';
                my $uid= $this->get_attribute($dn,'uid'); 
-               cmd_pipe('at now', "/usr/share/oss/tools/find_files_of_user.sh $uid $myuid");
+               cmd_pipe('at now', "/usr/share/oss/tools/find_files_of_user.sh --uid=$uid --myuid=$myuid");
        }
        return [
                { subtitle    => 'Searching the files for following users was started:' },
