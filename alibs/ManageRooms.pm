@@ -160,8 +160,8 @@ sub interface
                 "setRoomType",
 		"setWlanUser",
 		"stateOfRooms",
-		"change_room",
-		"apply_change_room",
+		"renamePC",
+		"applyRenamePC",
 		"selectWlanUser",
 		"setWlanUser",
 		"ANON_DHCP",
@@ -180,11 +180,10 @@ sub getCapabilities
                 { allowedRole  => 'teachers,sysadmins' },
                 { category     => 'Network' },
 		{ order        => 10 },
-		{ variable     => [ 'apply_change_room', [ type => 'action', label => 'apply_change_room' ]]},
 		{ variable     => [ 'addNewPC',          [ type => 'action' ] ]},
 		{ variable     => [ 'ANON_DHCP',         [ type => 'action' ] ]},
 		{ variable     => [ 'DHCP',              [ type => 'action' ] ]},
-		{ variable     => [ 'change_room',       [ type => 'action' ]]},
+		{ variable     => [ 'renamePC',          [ type => 'action' ]]},
 		{ variable     => [ 'editPC',            [ type => 'action' , label => 'edit' ]] },
 		{ variable     => [ 'room',              [ type => 'action' ]] },
 		{ variable     => [ 'control',           [ type => 'action' ]] },
@@ -549,7 +548,7 @@ sub room
 						{ DHCP	      => 'DHCP' },
 						{ master      => $master }, 
 						{ wlanaccess  => $wlan },
-						{ change_room => main::__('change_room')},
+						{ renamePC    => main::__('renamePC')},
 						{ delete      => 0 }
 				  ]};
 		}
@@ -561,7 +560,7 @@ sub room
 						{ hwconfig    => \@hwconf }, 
 						{ DHCP	      => 'DHCP' },
 						{ master      => $master },
-						{ change_room => main::__('change_room')},
+						{ renamePC    => main::__('renamePC')},
 						{ delete      => 0 } 
 				  ]};
 		}
@@ -1394,140 +1393,80 @@ sub ip_exists
 
 }
 
-sub change_room
+sub renamePC
 {
-	my $this  = shift;
-	my $reply = shift;
-	my @ret = ( 'change_room' );
+	my $this      = shift;
+	my $reply     = shift;
+	my $dn        = $reply->{line};
+	my @room_list = ();
 
-	my $hwaddress = $this->get_attribute($reply->{line},'dhcpHWAddress');
+	my $hwaddress = $this->get_attribute($dn,'dhcpHWAddress');
         $hwaddress =~ s/ethernet //i;
-	my $ipaddr   = $this->get_attribute($reply->{line},'dhcpStatements');
-	$ipaddr =~ s/fixed-address //i;
 
 #print Dumper($reply)." a change room reply-e\n";
-	my $hostname = $this->get_attribute($reply->{line},'cn');
-	my $message = sprintf( main::__('To move the workstation "%s"/"%s" into an other room, please select a room from the list below and press the button'), $hostname, $hwaddress ).' "'.main::__('apply_change_room').'".';
-	my $rooms = $this->get_rooms('all');
-	my @room_list;
-	my $roomDN = $this->get_room_of_ip($ipaddr);
-	my $roomname = $this->get_attribute($roomDN,'description');
+	my $hostname = $this->get_attribute($dn,'cn');
+	my $message = sprintf( main::__('To move the workstation "%s"/"%s" into an other room, please select a room from the list below and press the button'), $hostname, $hwaddress ).
+			     '<br>'.
+			     main::__('If you want to rename the workstation fill the field other name.');
+	my $rooms = $this->get_rooms();
 
-        foreach my $dn (keys %{$rooms})
-        {
-		if( ($rooms->{$dn}->{"description"}->[0] !~ /^ANON_DHCP/ ) and 
-		    ($rooms->{$dn}->{"description"}->[0] !~ /^SERVER_NET/) and 
-		    ($rooms->{$dn}->{"description"}->[0] ne "$roomname") )
-		{
-			push @room_list, [ $dn, $rooms->{$dn}->{"description"}->[0]]
-		}
-        }
+	my %tmp		= ();
+	foreach my $dn (keys %{$rooms})
+	{
+		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
+	}
+	foreach my $desc ( sort keys %tmp )
+	{
+		push @room_list, [ $tmp{$desc}, $desc ];
+	}
+	push @room_list, [ '---DEFAULTS---' ], [ get_parent_dn($dn) ];
 
 	return [
-		{ subtitle => "$hostname"},
-		{ NOTICE => "$message"},
-		{ name => 'room', value => [@room_list], attributes => [ type => 'popup' ]},
-		{ action => 'cancel'},
-		{ action => 'apply_change_room'},
-		{ name => 'current_pc_dn', value => "$reply->{line}", attributes => [ type => 'hidden']},
+		{ subtitle   => "$hostname"},
+		{ NOTICE     => "$message"},
+		{ other_name => '' },
+		{ rooms      => \@room_list },
+		{ action     => 'cancel'},
+		{ name       => 'action', value => 'applyRenamePC', attributes => [ label => 'apply' ] },
+		{ dn         => $dn }
 	];
 }
 
-sub apply_change_room
+sub applyRenamePC
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $new_host = {};
 
 	#get old_pc informations
-        my $old_pc_bootconf = $this->get_vendor_object($reply->{current_pc_dn},'EXTIS','BootConfiguration');
-	my $old_hostname = $this->get_attribute($reply->{current_pc_dn},'cn');
-	my $other_name = '';
-	if( $reply->{current_pc_dn} =~ /^cn=([^,]*),(.*)/){
-		my $old_room_desc = $this->get_attribute( "$2",'description');
-		if($old_hostname !~ /^(.*)-(.*)$/){
-			$other_name = $old_hostname;
-		}
+	my $old_pc          = $this->get_entry($reply->{dn});
+        my $old_pc_bootconf = $this->get_vendor_object($reply->{dn},'EXTIS','BootConfiguration');
+	my $hwaddress       = $old_pc->{dhcphwaddress}->[0];
+	$hwaddress          =~ s/ethernet //i;
+	my $old_hostname    = $old_pc->{cn}->[0];
+	#delete the old host
+	$this->delete_host($reply->{dn});
+	$new_host->{flag}        = 1;
+	$new_host->{hwaddresses} = $hwaddress;
+	$new_host->{dn}          = $reply->{rooms};
+	$new_host->{other_name}  = $reply->{other_name};
+	my @hosts      = $this->get_free_pcs_of_room($reply->{rooms});
+	my $new_pc_dn  = $this->addPC($new_host);
+	if( ref $new_pc_dn eq 'HASH')
+	{
+		return $new_pc_dn;
 	}
-        my $old_hwaddress = $this->get_attribute($reply->{current_pc_dn},'dhcpHWAddress');
-	$old_hwaddress =~ s/ethernet //i;
-	my $old_hwconf    = $this->get_config_value($reply->{current_pc_dn},'HW') || '-';
-	my $old_master    = ( $this->get_config_value($reply->{current_pc_dn},'MASTER') eq "yes" ) ? 1 : 0;
-	my $old_wlan      = ( $this->get_config_value($reply->{current_pc_dn},'WLANACCESS') eq "yes" ) ? 1 : 0;
-
-	my $room = $reply->{room};
-        if( $room !~ /^cn=Room/ )
-        {
-                $room = $this->get_room_by_name($room);
-        }
-        my $ip          = main::GetSessionValue('ip');
-        my $block       = new Net::Netmask($this->{SYSCONFIG}->{SCHOOL_SERVER_NET});
-        my $new_ip      = '';
-        my $hostname    = '';
-
-        #Get the room
-        my $roomnet   = $this->get_attribute($room,'dhcpRange').'/'.$this->get_attribute($room,'dhcpNetMask');
-        my $roompref  = $this->get_attribute($room,'description');
-        $block = new Net::Netmask($roomnet);
-        my @hosts      = ();
-        my %lhosts     = ();
-        my $base       = $block->base();
-        my $broadcast  = $block->broadcast();
-        my $counter    = -1;
-        foreach my $i ($block->enumerate()) {
-                if(  $i ne $base && $i ne $broadcast ) {
-                        $counter ++;
-                        next if ( $this->ip_exists($i) );
-                        next if ( $roompref =~ /^SERVER_NET/ && $counter < 10 );
-                        my $hostname = lc(sprintf("$roompref-pc%02d",$counter));
-                        $hostname =~ s/_/-/;
-			next if ( $this->host_exists($hostname) );
-                        push @hosts, $hostname.':'.$i;
-                }
-        }
-        my $freeze = encode_base64(freeze(\@hosts),"");
-        main::AddSessionDatas($freeze,'hosts');
-
-	$this->delete_host($reply->{current_pc_dn});
-	$room =~ /cn=config1,cn=(.*),ou=DHCP/;
-        my $server = ($1 eq 'schooladmin') ? undef : $1;
-        $this->rc("named","restart",$server);
-        $this->rc("named","restart") if( !undef $server );
-        $this->rc("dhcpd","restart",$server);
-
-        if( $this->{RADIUS} )
-        {
-		$reply->{workstations} = $hosts[0];
-		$reply->{hwaddresses} = $old_hwaddress;
-		$reply->{hwconfig} = $old_hwconf;
-		$reply->{master} = $old_master;
-		$reply->{wlanaccess} = $old_wlan;
-		$reply->{other_name} = $other_name;
-		$reply->{dn} = $room;
-		$reply->{flag} = '1';
-		$this->addPC($reply);
-        }
-        else
-        {
-		$reply->{workstations} = $hosts[0];
-                $reply->{hwaddresses} = $old_hwaddress;
-                $reply->{hwconfig} = $old_hwconf;
-                $reply->{master} = $old_master;
-                $reply->{other_name} = $other_name;
-                $reply->{dn} = $room;
-		$reply->{flag} = '1';
-		$this->addPC($reply);
-        }
-
-	my $new_pc_dn   = $this->get_workstation("$old_hwaddress");
-	my $new_hostname = $this->get_attribute($new_pc_dn,'cn');
 
 	#set new pc BootConfiguration
         if($old_pc_bootconf->[0] ne ''){
                 $this->create_vendor_object( $new_pc_dn, 'EXTIS','BootConfiguration', $old_pc_bootconf->[0]);
         }
+	$this->{LDAP}->modify( $new_pc_dn , delete => { configurationValue => [] } );
+	$this->{LDAP}->modify( $new_pc_dn , add    => { configurationValue => $old_pc->{configurationvalue} } );
+	my $new_hostname = $this->get_attribute($new_pc_dn,'cn');
 
 	#set pc_name in the OSSInv_PC and OSSInv_PC_Info tables
-	my $sth = $this->{DBH}->prepare("SELECT Id FROM OSSInv_PC WHERE PC_Name=\"$old_hostname\" and MacAddress=\"$old_hwaddress\"");   $sth->execute;
+	my $sth = $this->{DBH}->prepare("SELECT Id FROM OSSInv_PC WHERE PC_Name=\"$old_hostname\" and MacAddress=\"$hwaddress\"");   $sth->execute;
 	my $result = $sth->fetchrow_hashref();
 	my $pc_id = $result->{Id};
 	$sth = $this->{DBH}->prepare("UPDATE OSSInv_PC SET PC_Name=\'$new_hostname\' WHERE Id=\"$pc_id\";");   $sth->execute;
@@ -1538,7 +1477,7 @@ sub apply_change_room
 		$sth = $this->{DBH}->prepare("UPDATE OSSInv_PC_Info SET PC_Name=\'$new_hostname\' WHERE Id=\"$info_id\";");   $sth->execute;
 	}
 
-	$reply->{line} = $room;
+	$reply->{line} = $reply->{rooms};
 	$this->room($reply);
 	
 }
