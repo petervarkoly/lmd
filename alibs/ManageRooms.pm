@@ -1425,8 +1425,8 @@ sub renamePC
 	return [
 		{ subtitle   => "$hostname"},
 		{ NOTICE     => "$message"},
-		{ other_name => '' },
 		{ rooms      => \@room_list },
+		{ other_name => '' },
 		{ action     => 'cancel'},
 		{ name       => 'action', value => 'applyRenamePC', attributes => [ label => 'apply' ] },
 		{ dn         => $dn }
