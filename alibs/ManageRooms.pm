@@ -1408,11 +1408,12 @@ sub renamePC
 	my $message = sprintf( main::__('To move the workstation "%s"/"%s" into an other room, please select a room from the list below and press the button'), $hostname, $hwaddress ).
 			     '<br>'.
 			     main::__('If you want to rename the workstation fill the field other name.');
-	my $rooms = $this->get_rooms();
+	my $rooms = $this->get_rooms('all');
 
 	my %tmp		= ();
 	foreach my $dn (keys %{$rooms})
 	{
+		next if ( $rooms->{$dn}->{"description"}->[0] eq "ANON_DHCP" );
 		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
 	}
 	foreach my $desc ( sort keys %tmp )
