@@ -254,18 +254,13 @@ if( $action eq 'getPRODUCTKEY' )
 
 	my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
 	if( $oss->exists_dn( $sw_dn )  ){
-		my $allocation_type = $oss->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
-		my $obj = $oss->search_vendor_object_for_vendor( 'productkeys', $sw_dn);
-		if( defined $obj->[0] ){
-			foreach my $prodkey_dn ( @$obj ){
-				my $key = $oss->get_attribute($prodkey_dn, 'configurationKey');
-				my $licenckey = $oss->get_config_value($prodkey_dn, 'PRODUCT_KEY');
-				if( $oss->get_vendor_object( $sw_dn, 'productkeys', $key, "$hostname") ){
-					$prodkey = $licenckey." ALLOCATION_TYPE ".$allocation_type;
-					last;
-				}
-			}
-		}
+                my $allocation_type = $oss->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
+                my $result = $oss->{LDAP}->search( base => 'o=productkeys,'.$sw_dn , filter => "cValue=USED=$hostname" );
+                if( $result && $result->count())
+                {
+                        my $licenckey = $oss->get_config_value($result->entry(0)->dn(), 'PRODUCT_KEY');
+                        $prodkey = $licenckey." ALLOCATION_TYPE ".$allocation_type;
+                }
 	}
 
 	print $cgi->header(-charset=>'utf-8');
