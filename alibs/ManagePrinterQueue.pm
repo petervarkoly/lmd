@@ -361,21 +361,23 @@ sub get_free_quota
 		}
 	}
 
-	my $rooms = $this->get_rooms('all');
 	foreach my $printer (sort @printers) {
 		my $default_printer_in_room;
 		my $available_printer_in_room;
-		foreach my $room_dn (sort keys %{$rooms}){
+		foreach my $room ($this->get_rooms('all'))
+		{
+			my $room_dn = $room->[0];
+			my $desc    = $room->[1];
 			my $dprinter =  $this->get_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
 			if( $printer eq $dprinter->[0] ){
-				$default_printer_in_room .= $rooms->{$room_dn}->{description}->[0].", ";
+				$default_printer_in_room .= $desc.", ";
 			}
 			my $aprinters = $this->get_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
 			my @aprint = split ('\n',$aprinters->[0]);
 			my @ap;
 			foreach my $aprinter ( @aprint ){
 				if( $printer eq $aprinter ){
-					$available_printer_in_room .= $rooms->{$room_dn}->{description}->[0].", ";
+					$available_printer_in_room .= $desc.", ";
 				}
 			}
 		}
@@ -392,7 +394,7 @@ sub get_free_quota
 		my $user_pagequota = $printers->{$printer}->{PageLimit}; #PageLimit		
 		my $free_pagequota    = $user_pagequota-$used_pagequota;
 
-		$ret{$printer}->{default_printer_in_room} = $default_printer_in_room;
+		$ret{$printer}->{default_printer_in_room}   = $default_printer_in_room;
 		$ret{$printer}->{available_printer_in_room} = $available_printer_in_room;
 		if( ($quota_period eq 0) and ($user_pagequota eq 0) ){
 			$ret{$printer}->{free_pagequota} = "-";

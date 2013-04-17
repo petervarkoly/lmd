@@ -65,37 +65,31 @@ sub default
 
 sub showRoomLoggedin
 {
-	my $this  = shift;
-	my $reply = shift;
-	my $type  = shift;
-	my $actuale_room_dn = shift || $this->get_room_by_name(main::GetSessionValue('room'));
-	my @lines = ('logon_user');
+	my $this   = shift;
+	my $reply  = shift;
+	my $type   = shift;
+	my $myroom = shift || $this->get_room_by_name(main::GetSessionValue('room'));
+	my @lines  = ('logon_user');
 	my @ret;
 
-	my $room_name = $this->get_attribute($actuale_room_dn,'description');
+	my $room_name = $this->get_attribute($myroom,'description');
 	if( $type eq "sysadmins_root"){
-		my $rooms = $this->get_rooms();
-		my @roomsname;
-		foreach my $dn (keys %{$rooms})
-		{
-			push @roomsname,  [ $dn, $rooms->{$dn}->{"description"}->[0]];
-		}
-
-		if( ! $rooms  || !scalar(keys(%$rooms)))
+		my @rooms = $this->get_rooms();
+		if( ! @rooms  || !scalar(@rooms))
 		{
 			return { TYPE     => 'NOTICE',
 				 MESSAGE  => 'no_rooms_defined',
 				 MESSAGE1 => 'Please create rooms!'
 				};
 		}
-		push @roomsname, '---DEFAULTS---', $actuale_room_dn;
-		if($actuale_room_dn){
+		push @rooms, '---DEFAULTS---', $myroom;
+		if($myroom){
 			push @ret, { subtitle => "$room_name"};
 			push @ret, { NOTICE => main::__("You can see in the displayed list all currently logged in users. Press \"refresh\" to check again.") };
 		}
-		push @ret, { rooms => \@roomsname },
+		push @ret, { rooms => \@rooms },
 	}
-	elsif ( ($type eq "teachers") and (!$actuale_room_dn) )
+	elsif ( ($type eq "teachers") and (!$myroom) )
 	{
 		push @ret, { NOTICE => main::__("This page can only be accessed from one room only!")};
 	}
@@ -107,9 +101,9 @@ sub showRoomLoggedin
 	}
 
 	system("/usr/share/oss/tools/clean-up-sambaUserWorkstations.pl");
-	if($actuale_room_dn or ($type eq "sysadmins_root"))
+	if($myroom or ($type eq "sysadmins_root"))
 	{
-		my $logged_users = $this->get_logged_users("$actuale_room_dn");
+		my $logged_users = $this->get_logged_users("$myroom");
 		my %lu = ();
 		foreach my $dn (keys %{$logged_users} )
 		{

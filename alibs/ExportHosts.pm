@@ -42,7 +42,7 @@ sub getCapabilities
                 { order        => 90 },
 		{ variable     => [ "export_all",      [ type => "boolean" ] ] },
 		{ variable     => [ "Rembo",           [ type => "boolean" ] ] },
-		{ variable     => [ "export_rooms",    [ type => "list", size=>"15", multiple=>"true" ] ] }
+		{ variable     => [ "export_rooms",    [ type => "list", size=>"8", multiple=>"true" ] ] }
         ];
 }
 
@@ -51,23 +51,18 @@ sub default
 	my $this  = shift;
 	my $reply = shift;
 	my @ret;
-	my $rooms = $this->get_rooms('all');
-	my @rooms;
+	my @rooms = $this->get_rooms('client');
 
 	if($reply->{warning}){
 		push @ret, {NOTICE => "$reply->{warning}"};
 	}
 
-	foreach my $dn (keys %{$rooms})
-	{
-		next if ( $rooms->{$dn}->{"description"}->[0] eq 'ANON_DHCP' );
-		push @rooms, [ $dn, $rooms->{$dn}->{"description"}->[0]];
-	}
 
 	push @ret, { label => "A. If you wish to export all the Rooms PC s then check it here:" };
 	push @ret, { export_all => '' };
 	push @ret, { label => "B. If you wish to export only a few PC s then select check those:" };
 	push @ret, { export_rooms => \@rooms };
+	push @ret, { label => "B. If you wish to export the host for Rembo check this box:" };
 	push @ret, { Rembo       => 0 };
 	push @ret, { rightaction => 'exportHosts'};
 	push @ret, { rightaction => 'cancel'};
@@ -81,7 +76,7 @@ sub exportHosts
 	my $reply = shift;
 	my $hostlist = '';
 	my %hash;
-	my %rooms;
+	my @rooms = ();
 
 	#get school netmask
 	my $school_netmask = $this->get_school_config("SCHOOL_NETMASK");
@@ -98,18 +93,13 @@ sub exportHosts
 	}
 	elsif($reply->{export_all})
 	{
-		my $tmp = $this->get_rooms('all');
-		foreach my $dn (keys %{$tmp})
-		{
-			$rooms{$dn} = $tmp->{$dn}->{"description"}->[0];
-		}
+		@rooms = $this->get_rooms('all');
 	}
 	elsif($reply->{export_rooms})
 	{
-		my @dn_rooms = split('\n', $reply->{export_rooms});
-		foreach my $dn_room (@dn_rooms){
-			my $room_description = $this->get_attribute($dn_room,'description');
-			$rooms{$dn_room} = $room_description;
+		foreach my $dn (split('\n', $reply->{export_rooms}))
+		{
+			push @rooms, [ $dn , $this->get_attribute($dn,'description') ];
 		}
 	}
 	else
@@ -118,12 +108,13 @@ sub exportHosts
 		return $this->default($reply);
 	}
 
-	foreach my $dn (keys %rooms)
+	foreach my $room ( @rooms )
 	{
 		#get room name
-		next if ( $rooms{$dn} eq 'ANON_DHCP' );
-		my $room_name = $rooms{$dn};
-		foreach my $dn ( @{$this->get_workstations_of_room($dn)} )
+		next if ( $room->[1] eq 'ANON_DHCP' );
+		my $roomdn    = $room->[0];
+		my $room_name = $room->[1];
+		foreach my $dn ( @{$this->get_workstations_of_room($roomdn)} )
 		{
 			#get pc name
 			my $pc_name = $this->get_attribute($dn,'cn');
@@ -139,12 +130,15 @@ sub exportHosts
 					last;
 				}
 			}
+
 			#get pc hardware address
-			my $pc_hwaddress= $this->get_attribute($dn,'dhcpHWAddress');
+			my $pc_hwaddress = $this->get_attribute($dn,'dhcpHWAddress');
 			$pc_hwaddress =~ s/ethernet //i;
+
 			#get pc ip address
-			my $pc_ipaddress   = $this->get_attribute($dn,'dhcpStatements');
+			my $pc_ipaddress = $this->get_attribute($dn,'dhcpStatements');
 			$pc_ipaddress =~ s/fixed-address //i;
+
 			if($reply->{Rembo})
 			{
 				$hash{$room_name}->{$pc_name} = "$pc_hw_config_description;$pc_hwaddress;$pc_ipaddress;$school_netmask;1;1;1;1;22;noprotpart\n";

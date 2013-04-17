@@ -59,15 +59,12 @@ sub default
         my $this = shift;
         my $reply =shift;
 	my @lines       = ('rooms');
-        my $tmp         = $this->get_rooms('all');
-        my %rooms       = ();
 
 	my @table       = ('room',{ head => [ 'room', 'edit' ] } );
-        foreach my $dn (sort keys %{$tmp})
+        foreach my $room ( $this->get_rooms('all') )
         {
-                $rooms{$tmp->{$dn}->{"description"}->[0]} = $dn;
-		push @table, { line => [ $dn,
-                                        { name => 'room_list', value  => $tmp->{$dn}->{"description"}->[0], attributes => [ type => 'label', style => "width:150px" ] },
+		push @table, { line => [ $room->[0],
+                                        { name => 'room_list', value  => $room->[1], attributes => [ type => 'label', style => "width:150px" ] },
                                         { edit => main::__('edit') },
                         ]};
         }
@@ -88,14 +85,13 @@ sub edit
 	my @room_bootconf = ('room_bootconf');
 	my @terminalservers = ();
         my $description = $this->get_attribute($reply->{line},'description');
-	my $tmp         = $this->get_rooms('all');
 
 	push @lines, { head => [ 'description', 'WSType', 'BootConfiguration' ] };
 	push @room_bootconf, { head => [ 'room', 'WSType', 'BootConfiguration', '' ] };
 
-	foreach my $dn_room (sort keys %{$tmp})
+	foreach my $room ( $this->get_rooms('all') )
 	{
-		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} ) {
+		foreach my $dn_ws (sort @{$this->get_workstations_of_room($room->[0])} ) {
 	                my @ws_hwconf = $this->get_attribute($dn_ws,'configurationValue');
 			my $ws_hwconf_tmp;
 			foreach my $conf_value (@ws_hwconf){

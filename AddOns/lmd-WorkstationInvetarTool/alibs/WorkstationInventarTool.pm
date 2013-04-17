@@ -76,13 +76,12 @@ sub getCapabilities
 
 sub default
 {
-        my $this     = shift;
-	my $reply    = shift;
-        my @roomname = ('all');
+        my $this   = shift;
+	my $reply  = shift;
+        my @rooms  = ('all');
         my @filter   = ();
 	if($reply->{warning}){push @filter, {NOTICE => "$reply->{warning}"};}
 
-        my $rooms    = $this->get_rooms('all');
 	my @items = ('bios', 'cdrom', 'chipcard', 'cpu', 'disk', 'gfxcard', 'keyboard', 'memory', 'monitor', 'mouse', 'netcard', 'printer', 'sound', 'storage-ctrl');
 
 	my $sth = $this->{DBH}->prepare("SELECT Id, Category_Name, Category_Label, Category_Type FROM OSSInv_PC_Info_Category");
@@ -95,17 +94,13 @@ sub default
 	}
 	@items = ( @items, @infocategory);
 
-        foreach my $dn (keys %{$rooms})
-        {
-                push @roomname,  $rooms->{$dn}->{"description"}->[0];
-        }
-	push @roomname, '---DEFAULTS---','all';
+	push @rooms, $this->get_rooms('all'),['---DEFAULTS---'],['all'];
 
         push @filter, { table => [ lines =>{ head =>['','','']},
                                            {line => ['search',
-                                                     { name => 'filtering_by_rooms', value => main::__('filtering_by_rooms'), "attributes" =>[ type =>"label"]},
-                                                     { rooms =>  [ @roomname] },
-                                                     { name => 'filtering_by_elements', value => main::__('filtering_by_elements'), "attributes" =>[ type =>"label"]},
+                                                     { name     => 'filtering_by_rooms',    value => main::__('filtering_by_rooms'), "attributes" =>[ type =>"label"]},
+                                                     { rooms    =>  [ @rooms] },
+                                                     { name     => 'filtering_by_elements', value => main::__('filtering_by_elements'), "attributes" =>[ type =>"label"]},
                                                      { elements => [ @items] }
                                            ]},
                        ]};
@@ -141,20 +136,17 @@ sub search
 	}
 
         if($reply->{lines}->{search}->{rooms} eq 'all'){
-                my $rooms = $this->get_rooms('all');
-                foreach my $dn (keys %{$rooms})
-                {
-                        push @roomlist, $rooms->{$dn}->{"description"}->[0];
-                }
+		@roomlist = $this->get_rooms('all');
         }else{
-                my @rl = split ('\n',$reply->{lines}->{search}->{rooms});
-                foreach my $i ( sort(@rl) ){
-                        push @roomlist, $i;
+                foreach my $dn ( split ('\n',$reply->{lines}->{search}->{rooms}) )
+		{
+                        push @roomlist, [ $dn, "" ];
                 }
         }
-
-	for(my $j = 0; $j < scalar(@roomlist); $j++){
-                foreach my $dn (sort( @{$this->get_workstations_of_room($roomlist[$j])}))
+	
+	foreach my $room ( @roomlist )
+	{
+                foreach my $dn (sort( @{$this->get_workstations_of_room($room->[0])}))
                 {
 			my $hostname = $this->get_attribute($dn,'cn');
 			my $sth = $this->{DBH}->prepare("SELECT Id FROM OSSInv_PC WHERE PC_Name=\"$hostname\"");
