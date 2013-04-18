@@ -300,6 +300,7 @@ fi
 /etc/cron.daily/oss.list-updates
 rm /var/adm/oss/update-started';
 	my $tmp = write_tmp_file($PACKAGES);
+	system("cat $tmp | at now");
 	return {
 		TYPE => 'NOTICE',
 		MESSAGE1 => 'Update was Started',
