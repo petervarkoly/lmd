@@ -479,21 +479,21 @@ sub deleteHW
 {
         my $this  = shift;
         my $reply = shift;
-	my $rooms = $this->get_rooms();
 
 	#set rooms and workstations "configurationValue= HW=-", if delete actual hw_config
-	foreach my $dn_room (keys %{$rooms}){
-		if( $rooms->{$dn_room}->{configurationvalue}->[0] eq "HW=$reply->{hw_config}"){
+	foreach my $room ($this->get_rooms())
+	{
+		my $dn_room = $room->[0];
+		
+		if( $this->check_config_value($dn_room,'HW',$reply->{hw_config}) )
+		{
 			$this->set_config_value($dn_room,'HW',"-");
 		}
-		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} ) {
-			my @ws_hw_config = $this->get_attribute($dn_ws,'configurationValue');
-			foreach my $config_value (@ws_hw_config){
-				if( $config_value =~ /^HW=(.*)$/){
-					if( "$1" eq "$reply->{hw_config}" ){
-						$this->set_config_value($dn_ws,'HW',"-");
-					}
-				}
+		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} )
+		{
+			if( $this->check_config_value($dn_ws,'HW',$reply->{hw_config}) )
+			{
+				$this->set_config_value($dn_ws,'HW',"-");
 			}
 		}
 	}
@@ -501,13 +501,14 @@ sub deleteHW
 	#delete actual hardware configuration in LDAP.
 	my $hw_conf_dn = 'configurationKey='.$reply->{hw_config}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
         my $mesg = $this->{LDAP}->delete( $hw_conf_dn );
-        if( $mesg->code() ){
+        if( $mesg->code() )
+	{
                 $this->ldap_error($mesg);
                 return 0;
         }
 
 	# delete hardwae configuration directories
-	system("rm -r /srv/itool/images/$reply->{hw_config}");
+	system('test -d /srv/itool/images/'.$reply->{hw_config}.' && rm -r /srv/itool/images/'.$reply->{hw_config});
 
 	return $this->default();
 }
@@ -532,7 +533,8 @@ sub sw_autoinstall
 		push @ret, { label => $categorie };
 		my @p = ( "$categorie" );
 		push @p, { head => [ '', 'name', 'description', 'Version', 'type' ] };
-		foreach my $sw_dn ( sort keys %{$hash->{$categorie}} ){
+		foreach my $sw_dn ( sort keys %{$hash->{$categorie}} )
+		{
 			my $pkg = $this->get_attribute( $sw_dn, 'configurationKey');
 			my $is_set = $this->check_config_value( $hw_dn, 'SWPackage', "$pkg");
 			push @p, { line => [ $sw_dn,
@@ -548,7 +550,8 @@ sub sw_autoinstall
 
 	push @ret, { subtitle => 'set_software_to_img' };
 	push @ret, { action => 'cancel' };
-	if( keys %{$hash} ){
+	if( keys %{$hash} )
+	{
 		push @ret, { NOTICE => main::__('sw_autoinstall_note') };
 		push @ret, { dn => $reply->{dn} };
 		push @ret, { action => 'set_sofware' };
@@ -574,10 +577,13 @@ sub set_sofware
 	delete($reply->{rightaction});
 	delete($reply->{dn});
 
-	foreach my $categori ( keys %{$reply}){
-		foreach my $sw_dn ( keys %{$reply->{$categori}} ){
+	foreach my $categori ( keys %{$reply})
+	{
+		foreach my $sw_dn ( keys %{$reply->{$categori}} )
+		{
 			my $sw_name = $this->get_attribute($sw_dn, 'configurationKey');
-			if( $reply->{$categori}->{$sw_dn}->{inst} ){
+			if( $reply->{$categori}->{$sw_dn}->{inst} )
+			{
 				$this->add_config_value( $hw_dn, 'SWPackage', "$sw_name");
 			}else{
 				$this->delete_config_value( $hw_dn, 'SWPackage', "$sw_name");

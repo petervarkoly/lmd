@@ -282,21 +282,17 @@ sub rooms
         my $printers    = $this->get_printers();
         my $defaultp    = $printers->{DEFAULT};
         my @lines       = ('rooms');
-        my $tmp         = $this->get_rooms('all');
-        my %rooms       = ();
 
         my @table       = ('room',{ head => [ 'room', 'default_printer','available_printer' ] } );
-        foreach my $dn (sort keys %{$tmp})
-        {
-                $rooms{$tmp->{$dn}->{"description"}->[0]} = $dn;
-        }
 
         my $current_page;
-        my $rooms_per_page = 3;
-        my $count = 0;
-        my $total_rooms = keys(%rooms);
+        my $rooms_per_page = 5;
+        my $count       = 0;
+	my @rooms       = $this->get_rooms('all');
+        my $total_rooms = scalar(@rooms);
         my $page_number = $total_rooms / $rooms_per_page;
-        if( exists($reply->{current_page}) ){
+        if( exists($reply->{current_page}) )
+	{
                 $current_page = $reply->{current_page};
         }else{
                 $current_page = 1;
@@ -305,33 +301,39 @@ sub rooms
         my $pagelinemax = $current_page * $rooms_per_page;
         my $pagelinemin =$pagelinemax - $rooms_per_page;
 
-        foreach my $room (sort keys %rooms) {
+        foreach my $room (@rooms) {
+		my $dn   = $room->[0];
+		my $desc = $room->[1];
                 if( ($count < $pagelinemax) and ($count >= $pagelinemin) ){
                         my @printername;
                         my @ap = ();
-                        foreach my $pn (sort (keys %{$printers})) {
+                        foreach my $pn (sort (keys %{$printers}))
+			{
                                 push @printername, $pn;
                         }
 
-                        my $dprinter =  $this->get_vendor_object($rooms{$room},'EXTIS','DEFAULT_PRINTER');
-			if( !$dprinter->[0] ){
+                        my $dprinter =  $this->get_vendor_object($dn,'EXTIS','DEFAULT_PRINTER');
+			if( !$dprinter->[0] )
+			{
 				$dprinter->[0] = '---'; 
 			}
+
                         push @ap, @printername;
                         push @ap, '---DEFAULTS---';
-                        my $aprinters = $this->get_vendor_object($rooms{$room},'EXTIS','AVAILABLE_PRINTER');
+                        my $aprinters = $this->get_vendor_object($dn,'EXTIS','AVAILABLE_PRINTER');
                         my @aprint = split ('\n',$aprinters->[0]);
-                        foreach my $aprinter ( @aprint ){
+                        foreach my $aprinter ( @aprint )
+			{
                                 push @ap, $aprinter;
                         }
 
 			push @printername, '---';
 
                         push @table, { line => [ $room,
-                                        { name => 'room_list', value  => $room, attributes => [ type => 'label', style => "width:150px" ] },
-                                        { name => 'dprinter', value => [ @printername, '---DEFAULTS---', $dprinter->[0] ], attributes => [type => "popup"] },
-                                        { aprinter => \@ap},
-                                        { name => 'dn', value => $rooms{$room}, attributes => [ type => "hidden"] }
+                                        { name => 'room_list', value => $desc, attributes => [ type => 'label', style => "width:150px" ] },
+                                        { name => 'dprinter' , value => [ @printername, '---DEFAULTS---', $dprinter->[0] ], attributes => [type => "popup"] },
+                                        { aprinter => \@ap}  ,
+                                        { name => 'dn',        value => $dn, attributes => [ type => "hidden"] }
                         ]};
                 }
                 $count++;
@@ -756,27 +758,32 @@ sub delete_printer
 	my $printer_name = $reply->{line};
 	my $admin_pass = main::GetSessionValue('userpassword');
 	my $admin_user = main::GetSessionValue('username');
-	my $tmp        = $this->get_rooms('all');
 
 	# Default und Sonstige Drucker loschen
-	foreach my $room_dn (sort keys %{$tmp}){
+	foreach my $room ( $this->get_rooms() ){
+		my $room_dn  = $room->[0];
 		my $dprinter =  $this->get_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
-		if( $dprinter->[0] and $dprinter->[0] eq $printer_name ){
+		if( $dprinter->[0] and $dprinter->[0] eq $printer_name )
+		{
 			$this->delete_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
 		}
 		my $aprinters = $this->get_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
 		my @aprint = split ('\n',$aprinters->[0]);
-		if( scalar(@aprint) ge 1 ){
+		if( scalar(@aprint) ge 1 )
+		{
 			my $prin = '';
 			my $flg = 0;
-			foreach my $aprinter ( @aprint ){
-				if( "$aprinter" eq "$printer_name" ){
+			foreach my $aprinter ( @aprint )
+			{
+				if( "$aprinter" eq "$printer_name" )
+				{
 					$flg = 1;
 				}else{
 					$prin .= $aprinter."\n"; 	
 				}
 			}
-			if( $flg ){
+			if( $flg )
+			{
 				$this->delete_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
 				$this->create_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER',$prin);
 			}
@@ -786,7 +793,8 @@ sub delete_printer
 
 	# drucker treiber deactivieren
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
-	if( $install_printer_driver eq 'active' ){
+	if( $install_printer_driver eq 'active' )
+	{
 		system("rpcclient -U$admin_user%$admin_pass -c 'setdriver \"$printer_name\" \" \"' printserver");
 		system("rpcclient -U$admin_user%$admin_pass -c 'deldriverex \"$printer_name\" ' printserver");
 		my $del_ppd_file = $printer_name.".ppd";
@@ -797,7 +805,8 @@ sub delete_printer
 		system("rcsmb reload");
 	}
 	$install_printer_driver = get_install_printer_driver("$printer_name");
-	if( $install_printer_driver eq 'active' ){
+	if( $install_printer_driver eq 'active' )
+	{
 		$reply->{warning} .= main::__('Failed the printer Windows-Driver deactivation.');
 		$reply->{warning} .= "<BR>".main::__('Failed to delete printer.');
 		return $this->default($reply);
@@ -807,7 +816,8 @@ sub delete_printer
 	}
 	system("rcsmb reload");
 
-	if( !exists($reply->{warning}) ){
+	if( !exists($reply->{warning}) )
+	{
 		$reply->{warning} = main::__('The printer is deleted successfully.');
 	}
 	return $this->default($reply);

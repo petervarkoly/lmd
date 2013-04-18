@@ -155,7 +155,7 @@ sub outGoing
 {
         my $this        = shift;
         my $reply       = shift;
-        my $rooms       = $this->get_rooms('all');
+        my @rooms       = $this->get_rooms('all');
         my $pcs         = $this->get_workstations();
         my @new         = ('new');
         my @rules       = ('rules');
@@ -170,15 +170,11 @@ sub outGoing
         push @ROOMS, [ $SchoolNet , 'SCHOOL_NETWORK' ];
 
 	# Reading the ROOMS
-        foreach my $dn (keys %{$rooms})
+        foreach my $room ( @rooms )
         {
-                $tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-        }
-        foreach my $i ( sort keys %tmp )
-        {
-                my $dn = $tmp{$i};
-                my $desc     = $rooms->{$dn}->{"description"}->[0];
-		my $network  = $rooms->{$dn}->{"dhcprange"}->[0].'/'.$rooms->{$dn}->{'dhcpnetmask'}->[0];
+                my $dn = $room->[0];
+                my $desc     = $room->[1];
+		my $network  = $this->get_attribute($dn,"dhcprange").'/'.$this->get_attribute($dn,"dhcpnetmask");
 		push @ROOMS, [ $network , $desc ];
 		$HROOMS{$network} = $desc;
 	}

@@ -72,9 +72,8 @@ sub showClassRoomsOverview
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $rooms = $this->get_rooms();
-
-	if( ! $rooms  || !scalar(keys(%$rooms)))
+	my @rooms  = $this->get_rooms();
+	if( ! @rooms  || !scalar(@rooms))
 	{
 		return { TYPE     => 'NOTICE',
 			 MESSAGE  => 'no_rooms_defined',
@@ -82,16 +81,11 @@ sub showClassRoomsOverview
 			};
 	}
 
-	my $actuale_room_dn = main::GetSessionValue('room');
-	$actuale_room_dn    = $this->get_room_by_name($actuale_room_dn);
-	if( (!$actuale_room_dn) or (exists($reply->{warning})) ){
+	my $myroom = $this->get_room_by_name(main::GetSessionValue('room'));
+	if( (!$myroom) or (exists($reply->{warning})) ){
 		my @rooms = ('rooms');
-		my @roomsname;
+		my @roomsname = $this->get_rooms();
 		my @ret;
-		foreach my $dn (keys %{$rooms})
-		{
-			push @roomsname,  [ $dn, $rooms->{$dn}->{"description"}->[0]];
-		}
 		push @rooms, { head => ['', '', '' ]};
 		push @rooms, { line => [ 'schools_name',
 						{ name_rooms => main::__('Please choose a room:') },
@@ -101,7 +95,7 @@ sub showClassRoomsOverview
 		push @ret, { table => \@rooms };
 		return \@ret;
 	}else{
-		$reply->{rooms}->{schools_name}->{rooms} = "$actuale_room_dn";
+		$reply->{rooms}->{schools_name}->{rooms} = "$myroom";
 		$this->apply($reply);
 	}
 }
@@ -169,10 +163,7 @@ sub apply
 	else
 	{
 		#-------get rooms----------
-		my $rooms = $this->get_rooms();
-		foreach my $dn (keys %{$rooms}){
-			push @roomsname,  [ $dn, $rooms->{$dn}->{"description"}->[0]];
-		}
+		my @roomsname = $this->get_rooms();
 		push @rooms, { head => ['', '', '' ]};
 		push @rooms, { line => [ 'schools_name',
 						{ name_rooms => main::__('Please choose a room:') },

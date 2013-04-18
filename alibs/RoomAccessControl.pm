@@ -89,30 +89,21 @@ sub showRooms
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $rooms       = $this->get_rooms('clients');
-        my @lines       = ('rooms');
+        my @lines  = ('rooms');
+	my @rooms  = $this->get_rooms('clients');
 
-	if( ! $rooms  || !scalar(keys(%$rooms)))
+	if( ! @rooms  || !scalar(@rooms))
 	{
 		return { TYPE     => 'NOTICE',
              		 MESSAGE  => 'no_rooms_defined',
 			 MESSAGE1 => 'Please create rooms!'
 			};
 	}
-        my @dns         = ();
-        my %tmp         = ();
 
-        foreach my $dn (keys %{$rooms})
+        foreach my $room ( @rooms )
         {
-                $tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-        }
-        foreach my $i ( sort keys %tmp )
-        {
-                push @dns, $tmp{$i};
-        }
-        foreach my $dn (@dns)
-        {
-		my $desc = $rooms->{$dn}->{"description"}->[0];
+		my $dn   = $room->[0];
+		my $desc = $room->[1];
 		my ( $all, $mail, $print, $proxy, $samba ) = $this->get_room_access_state($dn);
 		if( defined $all )
 		{

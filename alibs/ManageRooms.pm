@@ -216,7 +216,7 @@ sub default
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $rooms  = undef; 
+	my @rooms  = undef; 
 	my $role   = main::GetSessionValue('role');
 	my @head   = ();
 	push @head, { name => 'room',    attributes => [ label => main::__('room'),    help => main::__('Push the button to edit the room') ] },
@@ -228,28 +228,24 @@ sub default
         push @head, { name => 'delete',  attributes => [ label => main::__('delete'),  help => main::__('Push the button to delete room with all workstations.') ] };
 	if( main::GetSessionValue('role') eq 'teachers' )
 	{
-		$rooms = $this->get_rooms(main::GetSessionValue('dn'));
+		@rooms = $this->get_rooms(main::GetSessionValue('dn'));
 	}
 	else
 	{
-		$rooms = $this->get_rooms('all');
+		@rooms = $this->get_rooms('all');
 	}
 	my @lines       = ('rooms');
 	my @dns         = ();
 	my %tmp		= ();
 
-	foreach my $dn (keys %{$rooms})
-	{
-		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-	}
 	push @lines, { head => \@head };
-	
 
-	foreach my $desc ( sort keys %tmp )
+	foreach my $room ( @rooms )
 	{
-		my $dn = $tmp{$desc};
+		my $dn       = $room->[0];
+		my $desc     = $room->[1];
 		my @hwconf   = @{$this->get_HW_configurations(1)};
-		my $network  = $rooms->{$dn}->{"dhcprange"}->[0].'/'.$rooms->{$dn}->{'dhcpnetmask'}->[0];
+		my $network  = $this->get_attribute($dn,"dhcprange").'/'.$this->get_attribute($dn,"dhcpnetmask");
 		my ( $control, $controller, $controllers )  = $this->get_room_control_state($dn);
 		my $hw       = $this->get_config_value($dn,'HW') || '-';
 		push @hwconf,  [ '---DEFAULTS---' ], [ $hw ];
@@ -299,29 +295,24 @@ sub stateOfRooms
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $rooms  = undef;
+	my @rooms  = undef;
 	my $free   = `base64 /srv/www/oss/img/accept.png`;
 	my $busy   = `base64 /srv/www/oss/img/delete.png`;
 	system("/usr/share/oss/tools/clean-up-sambaUserWorkstations.pl");
 	if( main::GetSessionValue('role') eq 'teachers' )
 	{
-		$rooms = $this->get_rooms(main::GetSessionValue('dn'));
+		@rooms = $this->get_rooms(main::GetSessionValue('dn'));
 	}
 	else
 	{
-		$rooms = $this->get_rooms('all');
+		@rooms = $this->get_rooms('all');
 	}
 	my @lines       = ('rooms');
 	my @dns         = ();
-	my %tmp		= ();
-
-	foreach my $dn (keys %{$rooms})
+	foreach my $room ( @rooms )
 	{
-		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-	}
-	foreach my $i ( sort keys %tmp )
-	{
-		my $dn = $tmp{$i};
+		my $dn    = $room->[0];
+		my $desc  = $room->[1];
 		my $users = "";
 		my $logged_users = $this->get_logged_users("$dn");
 		foreach my $dn (sort keys %{$logged_users} ){
@@ -329,11 +320,11 @@ sub stateOfRooms
 		}
 		if( $users eq "" )
 		{
-			push @lines, { line => [ $dn , { description => $i }, { free_busy => $free } ] };
+			push @lines, { line => [ $dn , { description => $desc }, { free_busy => $free } ] };
 		}
 		else
 		{
-			push @lines, { line => [ $dn , { description => $i }, { free_busy => $busy }, { network => $users } ] };
+			push @lines, { line => [ $dn , { description => $desc }, { free_busy => $busy }, { network => $users } ] };
 		}
 	}
 	return [
@@ -1162,22 +1153,12 @@ sub scanPCs
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $rooms  = $this->get_rooms('all');
-	my @srooms = ();
+	my @rooms  = $this->get_rooms('all');
 	my %tmp    = ();
 	my @hwconf = @{$this->get_HW_configurations(1)};
 	my $hw     = $reply->{hwconfig} || "default";
-	foreach my $dn (keys %{$rooms})
-	{
-		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-	}
-	foreach my $i ( sort keys %tmp )
-	{
-		push @srooms, [ $tmp{$i} , $i ];
-		
-	}
 	if( defined $reply->{rooms} ) {
-		push @srooms, [ '---DEFAULTS---'], [ $reply->{rooms} ]; 
+		push @rooms, [ '---DEFAULTS---'], [ $reply->{rooms} ]; 
 	}
 	if( !$reply->{rooms} || !defined $reply->{continue} )
 	{
@@ -1185,7 +1166,7 @@ sub scanPCs
 		return [
 				{ subtitle  => 'Scan New PCs'}, 
 				{ label     => 'Please select the room and datas to collect' },
-				{ name      => 'rooms',     value => \@srooms,  attributes => [ type  => 'popup', focus=>1 ] },
+				{ name      => 'rooms',     value => \@rooms,   attributes => [ type  => 'popup', focus=>1 ] },
 				{ name      => 'bserial',   value => 1,         attributes => [ type  => 'boolean' ] },
 				{ name      => 'binventar', value => 1,         attributes => [ type  => 'boolean' ] },
 				{ name      => 'bposition', value => 0,         attributes => [ type  => 'boolean' ] },
@@ -1202,7 +1183,7 @@ sub scanPCs
 	my @ret = ();
 	my $focus = 0;
 	push @ret, { subtitle  => 'Scan New PC'};
-	push @ret, { rooms     => \@srooms }; 
+	push @ret, { rooms     => \@rooms }; 
 	push @ret, { hwconfig  => \@hwconf };
 	if( $reply->{hwaddresses} eq '' )
 	{
@@ -1408,24 +1389,14 @@ sub renamePC
 	my $message = sprintf( main::__('To move the workstation "%s"/"%s" into an other room, please select a room from the list below and press the button'), $hostname, $hwaddress ).
 			     '<br>'.
 			     main::__('If you want to rename the workstation fill the field other name.');
-	my $rooms = $this->get_rooms('all');
+	my @rooms = $this->get_rooms('all');
 
-	my %tmp		= ();
-	foreach my $dn (keys %{$rooms})
-	{
-		next if ( $rooms->{$dn}->{"description"}->[0] eq "ANON_DHCP" );
-		$tmp{$rooms->{$dn}->{"description"}->[0]} = $dn;
-	}
-	foreach my $desc ( sort keys %tmp )
-	{
-		push @room_list, [ $tmp{$desc}, $desc ];
-	}
-	push @room_list, [ '---DEFAULTS---' ], [ get_parent_dn($dn) ];
+	push @rooms, [ '---DEFAULTS---' ], [ get_parent_dn($dn) ];
 
 	return [
 		{ subtitle   => "$hostname"},
 		{ NOTICE     => "$message"},
-		{ rooms      => \@room_list },
+		{ rooms      => \@rooms },
 		{ other_name => '' },
 		{ action     => 'cancel'},
 		{ name       => 'action', value => 'applyRenamePC', attributes => [ label => 'apply' ] },
@@ -1511,8 +1482,8 @@ sub ANON_DHCP
 
 	#get free hosts
 	my @hosts = ();
-	my $rooms = $this->get_rooms();
-	foreach my $room_dn ( keys %{$rooms} ){
+	foreach my $room ( $this->get_rooms() ){
+		my $room_dn   = $room->[0];
 		my $roomnet   = $this->get_attribute($room_dn,'dhcpRange').'/'.$this->get_attribute($room_dn,'dhcpNetMask');
 		my $roompref  = $this->get_attribute($room_dn,'description');
 		my $block = new Net::Netmask($roomnet);
