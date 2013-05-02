@@ -56,6 +56,7 @@ sub getCapabilities
                  { category     => 'Network' },
                  { order        => 70 },
                  { variable     => [ "hostname",        	[ type => 'string', label => 'Host Name' ] ] },
+		 { variable     => [ "name",     		[ type => 'label'] ] },
 		 { variable     => [ "domain_name",     	[ type => 'label'] ] },
 		 { variable     => [ "domain_type",     	[ type => 'label'] ] },
 		 { variable     => [ "domain",          	[ type => 'hidden'] ] },
@@ -104,7 +105,7 @@ sub default
 
 	foreach my $i ($mesg->entries) {
 	        foreach my $zn ( $i->get_value('zoneName') ) {
-	            if( ! ( $zn =~ /IN-ADDR\.ARPA/i ) && ! ( $zn eq $this->{SYSCONFIG}->{SCHOOL_DOMAIN} ) ) {
+	            if(  $zn ne $this->{SYSCONFIG}->{SCHOOL_DOMAIN}  ) {
 	                my $smdtype = $i->get_value('suseMailDomainType');
 			push @lines, { line => [ "$zn",
                                                 { domain_name => "$zn" },
@@ -272,8 +273,7 @@ sub edit_hosts
 
         my $mesg = $this->{LDAP}->search( base    => $this->{SYSCONFIG}->{DNS_BASE},
                                           scope   => 'sub',
-                                          attrs   => ['dn'],
-					  filter  => '(&(zoneName='.$Zone.')(objectClass=top)(objectClass=dNSZone)(aRecord=*)(!(relativeDomainName=@))(!(objectClass=DHCPEntry)))'
+					  filter  => '(&(zoneName='.$Zone.')(objectClass=top)(objectClass=dNSZone)(|(aRecord=*)(pTRRecord=*))(!(relativeDomainName=@))(!(objectClass=DHCPEntry)))'
                 );
         if( $mesg->code)
         {
@@ -281,18 +281,38 @@ sub edit_hosts
                 return undef;
         }
 
-	push @hosts,{ head => ['RelativeDomainName', 'aRecord', 'delete'] };
-	foreach my $entry ($mesg->entries){
-		my $host_dn = $entry->dn;
-		my $subdomain_ip = $this->get_attribute( $host_dn,'aRecord');
-                my $rel_dom_name = $this->get_attribute( $host_dn,'relativeDomainName');
+	if( $Zone =~ /IN-ADDR\.ARPA/i )
+	{
+		push @hosts,{ head => ['RelativeDomainName', 'pTRRecord', 'delete'] };
+		foreach my $entry ($mesg->entries){
+			my @pTRRecords = $entry->get_value('pTRRecord');
+			foreach my $i ( @pTRRecords )
+			{
+				push @hosts,{ line=> 
+						[ $entry->dn().'#PTRRECORD#'.$i ,
+							{ relative_domain_name => $entry->get_value('relativeDomainname') },
+							{ name 		       => $i },
+							{ removehost	       => main::__('delete') },
+							{ zone => $Zone }
+					   ]};
+			}
+		}
+	}
+	else
+	{
+		push @hosts,{ head => ['RelativeDomainName', 'aRecord', 'delete'] };
+		foreach my $entry ($mesg->entries){
+			my $host_dn = $entry->dn;
+			my $subdomain_ip = $this->get_attribute( $host_dn,'aRecord');
+			my $rel_dom_name = $this->get_attribute( $host_dn,'relativeDomainName');
 
-		push @hosts,{ line=> [ "$host_dn",
-					{ relative_domain_name => "$rel_dom_name" },
-                                        { name => 'aRecord', value => "$subdomain_ip", attributes => [ type => 'label']},
-                                        { removehost => main::__('delete') },
-                                        { zone => "$reply->{line}" }
-                                   ]};
+			push @hosts,{ line=> [ "$host_dn",
+						{ relative_domain_name => "$rel_dom_name" },
+						{ name => 'aRecord', value => "$subdomain_ip", attributes => [ type => 'label']},
+						{ removehost => main::__('delete') },
+						{ zone => $Zone }
+					   ]};
+		}
 	}
 
 	push @ret, { subtitle => "Edit Hosts" };
@@ -359,11 +379,55 @@ sub removehost
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $zone  = $reply->{subdomain}->{$reply->{line}}->{zone};
 
 	my $host_dn = $reply->{line};
-	$this->{LDAP}->delete( $host_dn );
+	if( $host_dn =~ /(.*)#PTRRECORD#(.*)/ )
+	{
+		$host_dn = $1;
+		my $ptr  = $2;
+		my $e    = $this->get_entry($host_dn,1);
+		my @ptrs = $e->get_value('ptrRecord');
+		if( 1 == scalar(@ptrs) )
+		{
+			$this->{LDAP}->delete( $host_dn );
+		}
+		else
+		{
+			$e->delete( ptrRecord => [ $ptr ] );
+			$e->update($this->{LDAP});
+		}
+	}
+	else
+	{
+		my $e    = $this->get_entry($host_dn,1);
+		my $name = $e->get_value('relativedomainname');
+		$name    = "$name.$zone.";
+	        my $mesg = $this->{LDAP}->search(  base => $this->{SYSCONFIG}->{DNS_BASE},
+                                        scope => 'sub',
+                                        attrs => [ 'dn' ],
+                                        filter=> "ptrRecord=$name"
+                                );
+        	if( !$mesg->code && $mesg->count )
+	        {
+			foreach my $re ( $mesg->entries() )
+			{
+				my @ptrs = $re->get_value('ptrRecord');
+				if( 1 == scalar(@ptrs) )
+				{
+					$this->{LDAP}->delete( $re->dn() );
+				}
+				else
+				{
+					$re->delete( ptrRecord => [ $name ] );
+					$re->update($this->{LDAP});
+				}
+			}
+		}
+		$this->{LDAP}->delete( $host_dn );
+	}
 
-	$reply->{line} = $reply->{subdomain}->{$reply->{line}}->{zone};
+	$reply->{line} = $zone;
 	$this->edit_hosts($reply);
 }
 
