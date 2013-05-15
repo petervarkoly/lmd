@@ -703,8 +703,7 @@ sub Text
 #   	$VALUE = 0;
 #   }
     $VALUE = $_;
-#    utf8::upgrade($VALUE);
-    $VALUE = encode("utf8", $VALUE);
+    Encode::_utf8_on($VALUE);
     Debug("\n$VARIABLE  TEXT '$VALUE'");
 }  
 
