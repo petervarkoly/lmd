@@ -127,8 +127,7 @@ sub addNewGuestGroup
 {
 	my $this  = shift;
 	my $reply = shift;
-	my $tmp   = $this->get_rooms();
-	my @rooms = ();
+	my @rooms = $this->get_rooms;
 	my @newgroup = ();
 	if( exists($reply->{warning}) ){
 		push @newgroup, { ERROR => $reply->{warning} };
@@ -139,10 +138,6 @@ sub addNewGuestGroup
 	my @time = strptime($Date);
 	$time[3] = $time[3]+6;
 	my $expirationdate = POSIX::strftime("%Y-%m-%d", @time);
-	foreach my $dn (sort keys %{$tmp})
-        {
-		push @rooms, $tmp->{$dn}->{"description"}->[0];
-        }
 	push @rooms, '---DEFAULTS---';
 	push @rooms, 'all';
 
@@ -223,13 +218,15 @@ sub apply
 
 		$this->make_delete_group_webdavshare( "$dng", "$reply->{webdav_access}" );
 	
-	       if( $reply->{roomlist} ne 'all' ){
-	               $this->create_vendor_object($dng,'EXTIS','RoomList', $reply->{roomlist} );
-	               foreach my $r ( split /\n/, $reply->{roomlist} ) {
-	                        foreach my $dn ( @{$this->get_workstations_of_room($r)} ){
-	                                push @pcs, $this->get_attribute($dn,'cn');
-	                        }      
-	                }      
+		if( $reply->{roomlist} ne 'all' ){
+			my @rooms=();
+			foreach my $r ( split /\n/, $reply->{roomlist} ) {
+				push @rooms, $this->get_attribute($r,'description');
+				foreach my $dn ( @{$this->get_workstations_of_room($r)} ){
+				        push @pcs, $this->get_attribute($dn,'cn');
+				}      
+			}      
+			$this->create_vendor_object($dng,'EXTIS','RoomList', join(/,/,@rooms) );
 	        }elsif( $reply->{roomlist} eq 'all' ){
 	                $this->create_vendor_object($dng,'EXTIS','RoomList', 'all' );
 	        }      
