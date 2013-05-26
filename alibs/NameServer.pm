@@ -35,6 +35,7 @@ sub getCapabilities
 		 { allowedRole  => 'root' },
 		 { allowedRole  => 'sysadmins' },
 		 { category     => 'Network' },
+		 { disabled     => 1 },
 		 { order        => 100 },
 		 { variable     => [ "nameServer1",  [ type => "string", label=>"Name Server 1" ] ] },
 		 { variable     => [ "nameServer2",  [ type => "string", label=>"Name Server 2" ] ] },

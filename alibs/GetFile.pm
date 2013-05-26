@@ -157,10 +157,11 @@ sub get_it
         }
         if( $reply->{class_room_users} )
         {
+		my $mydn = main::GetSessionValue('dn');
                 foreach my $ws ( @{$this->get_workstations_of_room(main::GetSessionValue('room'))} )
                 {
                         my   $u  = $this->get_user_of_workstation($ws);
-                        push @users, $u if( $u && $this->is_student($u) );
+                        push @users, $u if( $u && $u ne $mydn );
                 }
         }
 	foreach my $g (@groups)
