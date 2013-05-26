@@ -415,7 +415,7 @@ sub create_letters
 
 	push @ret, { name => 'import_class', value => [@{$import_class->{class}}, 'all', '---DEFAULTS---', 'all'], attributes => [ type => 'popup', label => main::__('Select Class to generate a letter :') ] };
 	#text for letter
-	my $text_letter = cmd_pipe("cat /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt.tmp");
+	my $text_letter = `cat /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt`;
 	$text_letter =~ s/,//g;
 	push @ret, { name => 'text_letter', value => "$text_letter", attributes => [ type => 'text', label => main::__('Text on the letter :') ] };
 	#store text
@@ -438,9 +438,10 @@ sub create_pdf
 	my $file_info = $this->get_file_info("$reply->{imp_log_file}");
 	my $lang = $file_info->{lang};
 
-	if( $reply->{store_text} ){	
-		write_file( "/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt.tmp", $reply->{text_letter});
-		my $file = "/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt.tmp";
+	if( $reply->{store_text} ){
+		system("cp /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt-orig");
+		write_file( "/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt", $reply->{text_letter});
+		my $file = "/usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt";
                 my $format = `file -bi $file`;
                 chomp $format; $format =~ /charset=(.*)/; $format = $1;
                 if( $format eq 'unknown' ) {
