@@ -53,6 +53,7 @@ sub getCapabilities
 		 { order        => 49 },
 		 { variable     => [ "nfs",                  [ type => "action" ] ] },
 		 { variable     => [ "usb_1",                [ type => "action" ] ] },
+		 { variable     => [ "start_create_backup",  [ type => "action" ] ] },
 		 { variable     => [ "iscsi",                [ type => "action" ] ] },
 		 { variable     => [ "media_label",          [ type => "label" ] ] },
 		 { variable     => [ "media",                [ type => "popup" ] ] },
@@ -66,11 +67,18 @@ sub default
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $backup= $this->get_school_config("SCHOOL_BACKUP");
 
 	if( -e "/var/adm/oss/BackupRunning"){
-		return [
-			{ NOTICE => "Runing Backup!"},
-		]
+		my $BP=`cat /var/adm/oss/BackupRunning`; chomp $BP;
+		if( -d "/proc/$BP" )
+		{
+			my $log = `tail -20 /var/log/oss-backup.log`;
+			return [
+				{ notranslate__NOTICE => $log }, 
+				{ NOTICE              => "A backup process is running."},
+			]
+		}
 	}
 
 	if( -e "/var/adm/oss/Format_ext3_Running"){
@@ -83,6 +91,7 @@ sub default
 
 	my @create = ('c_mediums');
 	push @create, { line=> [ '' ] };
+	push @create, { line=> [ 'start_create_backup', { start_create_backup => main::__('Use existing configuration.') }]} if (lc($backup) eq 'yes');
 	push @create, { line=> [ 'nfs', { nfs => main::__('nfs') }]};
 	push @create, { line=> [ 'usb', { usb_1 => main::__('usb_1') }]};
 #	push @create, { line=> [ 'iscsi', { iscsi => main::__('iscsi') }] };
@@ -196,7 +205,7 @@ sub usb_3
 		next if ( grep(/Device Files: .*\/dev\/cdrom/,$ds) );
 		my ( $s )  = ( /Size: (\d+)/ );
 		my ( $m )  = ( /Model: (.*)/ );
-		$s = $s/2/1024/1024;
+		$s = sprintf("%.2f GB",$s/2/1024/1024);
 		$disks->{$d}->{size}  = $s;
 		$disks->{$d}->{model} = $m;
 		foreach my $dev ( split /,/, $ds )
@@ -209,7 +218,7 @@ sub usb_3
 	}
 	foreach my $d ( keys %$disks )
 	{
-		push @splt_hdd, [ $disks->{$d}->{dev}, $disks->{$d}->{model}." ".$disks->{$d}->{size}."GB" ];
+		push @splt_hdd, [ $disks->{$d}->{dev}, $disks->{$d}->{model}." ".$disks->{$d}->{size} ];
 	}	
 
 
