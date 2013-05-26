@@ -271,7 +271,7 @@ sub default
 			push @lines, { line => \@line }; 
 		}
 	}
-	if( scalar(@lines) > 1)
+	if( scalar(@lines) > 19 )
 	{
 		return 
 		[
@@ -279,6 +279,17 @@ sub default
 		   { rightaction => "stateOfRooms" },
 		   { rightaction => "scanPCs" },
 		   { rightaction => "addNewRoom" },
+		   { rightaction => "setRooms" }
+		];
+	}
+	elsif( scalar(@lines) > 1 )
+	{
+		return 
+		[
+		   { table  =>  \@lines },
+		   { action => "stateOfRooms" },
+		   { action => "scanPCs" },
+		   { action => "addNewRoom" },
 		   { rightaction => "setRooms" }
 		];
 	}
