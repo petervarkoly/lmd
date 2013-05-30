@@ -542,10 +542,7 @@ sub create_pdf
 			}
 		}
 	}
-	if( ! utf8::is_utf8($new_file_content) ){
-		utf8::decode($new_file_content);
-		utf8::encode($new_file_content);
-	}
+	Encode::_utf8_on($new_file_content);
 	write_file( $tmp_csv_file, $new_file_content);
 
 	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
