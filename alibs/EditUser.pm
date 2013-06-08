@@ -367,6 +367,7 @@ sub editUser
 		next if( $attr eq 'rasaccess' && ! $this->{RADIUS} );
 		next if( $attr eq 'role' );
 		next if( $attr =~/^susemail.*address|mail$/ && $user->{mailenabled}->[0] =~ /no/i );
+		next if( $attr =~/^sn|givenname|birthday$/  && $this->{ManageStudents} );
 		my $val = undef;
 		if( defined $user->{$attr} )
 		{
