@@ -55,7 +55,7 @@ sub default
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $url    = "http://repo.openschoolserver.net/addons/addons.xml";
+	my $url    = "http://repo.openschoolserver.net/cgi-bin/addons.pl?regcode=".$this->{SYSCONFIG}->{SCHOOL_REG_CODE};
 	my $tempfile = "/tmp/addons.xml";
 	my $addonsfile = "/var/adm/oss/addons.xml";
 	my $newxml = new XML::Simple;
