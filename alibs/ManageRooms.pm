@@ -290,7 +290,7 @@ sub default
 		   { action => "stateOfRooms" },
 		   { action => "scanPCs" },
 		   { action => "addNewRoom" },
-		   { rightaction => "setRooms" }
+		   { action => "setRooms" }
 		];
 	}
 	else
