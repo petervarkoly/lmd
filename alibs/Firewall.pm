@@ -227,26 +227,34 @@ sub outGoing
 		]
 	};
 	# Reading defined FWRules
-	my $i = 0;
-	push @rules, { head => [ 'source', 'destination', 'protocol', 'port', 'delete' ] }; 
-	foreach my $RULE ( sort( split / / , `. /etc/sysconfig/SuSEfirewall2; echo -n \$FW_MASQ_NETS` ))
+	my $RULES = {};
+	foreach my $RULE ( split / / , `. /etc/sysconfig/SuSEfirewall2; echo -n \$FW_MASQ_NETS` )
 	{
+		next if( $RULE eq "0/0" );
 		my ( $s , $d , $p , $port ) = split /,/ ,$RULE;
 		my $sl = $s;
 		$sl = $HROOMS{$s} if( defined $HROOMS{$s} );
 		$sl = $HWS{$s}    if( defined $HWS{$s} );
 		$p  = 'all' if( ! defined $p );
+		$RULES->{$sl}->{source}      = $s;
+		$RULES->{$sl}->{destination} = $d;
+		$RULES->{$sl}->{protocol}    = $p;
+		$RULES->{$sl}->{port}        = $port;
+	}
+	push @rules, { head => [ 'source', 'destination', 'protocol', 'port', 'delete' ] }; 
+	my $i = 0;
+	foreach my $sl ( sort keys %$RULES )
+	{
 		push @rules, { line => [ $i , 
-				{ source      => [ [ $s , $sl ], '---DEFAULTS---', $s ] },
-				{ destination => $d },
-				{ protocol    => ['tcp', 'udp', 'all', '---DEFAULTS---', $p ] },
-				{ port	      => $port },
+				{ source      => [ [ $RULES->{$sl}->{source} , $sl ], '---DEFAULTS---', $RULES->{$sl}->{source} ] },
+				{ destination => $RULES->{$sl}->{destination} },
+				{ protocol    => ['tcp', 'udp', 'all', '---DEFAULTS---', $RULES->{$sl}->{protocol} ] },
+				{ port	      => $RULES->{$sl}->{port} },
 				{ delete      => 0 }
 			]
 		};
 		$i++;
 	}
-
 	my   @ret = ();
 	push @ret, { subtitle => 'Outgoing Rules' };
 	push @ret, { label => main::__('Define new outgoing rules.') };
@@ -262,7 +270,11 @@ sub insert
 {
         my $this   = shift;
         my $reply  = shift;
-	my $rules  = `. /etc/sysconfig/SuSEfirewall2; echo -n \$FW_MASQ_NETS`;
+	my @rules  = ();
+	foreach my $RULE ( sort( split / / , `. /etc/sysconfig/SuSEfirewall2; echo -n \$FW_MASQ_NETS` ))
+	{
+		push @rules ,$RULE;
+	}
 	if( ! $reply->{new}->{$reply->{line}}->{source} )
 	{
 		return [
@@ -271,8 +283,9 @@ sub insert
 			{ action  => 'outGoing' }
 		]
 	}
-	$rules    .= ' '.createRule( $reply->{new}->{$reply->{line}} );
-	system("sed -i 's#^FW_MASQ_NETS=.*\$#FW_MASQ_NETS=\"$rules\"#' /etc/sysconfig/SuSEfirewall2");
+	push @rules , createRule( $reply->{new}->{$reply->{line}} );
+	system("sed -i 's#^FW_MASQUERADE=.*\$#FW_MASQUERADE=\"yes\"#'  /etc/sysconfig/SuSEfirewall2");
+	system("sed -i 's#^FW_MASQ_NETS=.*\$#FW_MASQ_NETS=\"".join(" ",@rules)."\"#' /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
 	$this->outGoing;
 }
@@ -287,6 +300,7 @@ sub applyOutgoing
 		next if( $reply->{rules}->{$i}->{delete} );
 		push @rules , createRule( $reply->{rules}->{$i} );
 	}
+	system("sed -i 's#^FW_MASQUERADE=.*\$#FW_MASQUERADE=\"yes\"#'  /etc/sysconfig/SuSEfirewall2");
 	system("sed -i 's#^FW_MASQ_NETS=.*\$#FW_MASQ_NETS=\"".join(" ",@rules)."\"#' /etc/sysconfig/SuSEfirewall2");
 	system("/sbin/SuSEfirewall2 start");
 	$this->outGoing;
