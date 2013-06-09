@@ -92,7 +92,7 @@ sub default
 		$) = join " ",@{$tmp->{OXGroupID}};
 		$> = $tmp->{uidnumber}->[0];
 	}
-	my $dirs = cmd_pipe("/usr/share/oss/tools/print_dir.pl","uid $uid\npath $path");
+	my $dirs = cmd_pipe("/usr/share/oss/tools/print_dir.pl","uid $uid\npath ".encode("utf8", $path));
 	my @r = ( { path    => $dirs } );
 	if( ! -l $path  && -w $path )
 	{ #do not change the acls for symlinks and if no rights
@@ -137,6 +137,7 @@ sub mkDir
 			}
 		}
 	}
+	$actpath = encode("utf8", $actpath);
 	return [
 		{ actpath   => $actpath },
 		{ notranslate_label  => $actpath },
@@ -200,6 +201,7 @@ sub upLoad
 			}
 		}
 	}
+	$actpath = encode("utf8", $actpath);
 	return [
 		{ actpath   => $actpath },
 		{ notranslate_label  => $actpath },
@@ -322,6 +324,7 @@ sub showACL
 	push @u , { line => [ 'group', { name => $unix->{group}->{name} }, { read => $unix->{group}->{r} },{ write => $unix->{group}->{w}},{ execute => $unix->{group}->{e}} ]};
 	push @u , { line => [ 'other', { name => 'other' } , { read => $unix->{other}->{r} }, {write => $unix->{other}->{w}},{ execute => $unix->{other}->{e}} ]};
 
+	$path = encode("utf8", $path);
 	my @r = ({ subtitle => 'showACL'} );
 	push @r, { label   => $path };
 	push @r, { label   => 'Unix rights' };
