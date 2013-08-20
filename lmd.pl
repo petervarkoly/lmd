@@ -940,7 +940,7 @@ sub ConvertPlainToReplay
     foreach my $i ( split /\n/, $x )
     {
         my ( $n, $val ) = split /\s+/, $i, 2;
-	if( $name && ( $n ne $name || $name eq 'label') ) 
+	if( $name && ( $n ne $name || $name eq 'label' || $name eq 'action' ) ) 
 	{ # This is a new variable
 	    if( $value )
 	    {
@@ -1507,6 +1507,10 @@ sub login
     {
 	    $REQUEST->{ip} = $oss->get_config_value($dn,'LOGGED_ON') || '127.0.0.1';
     }
+    if( ! $dn ) {
+	$oss->destroy();
+        return ReturnError(['LOGIN_FAILED',"User not found"]);
+    }
     if( $result = $oss->login($dn,$REQUEST->{userpassword},$REQUEST->{ip},0) )
     {
 	my $now  = time;
@@ -1556,10 +1560,22 @@ sub login
 			@app = split /,/,$vap->[0];
 		}
 	}
-	push @reply, { cn   => "$cn" }; 
-	push @reply, { role => "$role" }; 
+	foreach my $class ( $oss->get_classes_of_user($dn) )
+	{
+		push @reply, { class   => get_name_of_dn($class->[0]) };
+	}
+	foreach my $i ( @{$result->{$dn}->{uniqueidentifier}->[0]} )
+	{
+		push @reply, { configurationvalue   => $i };
+	}
+	push @reply, { uniqueidentifier   => $result->{$dn}->{uniqueidentifier}->[0] }; 
+	push @reply, { sn         => $result->{$dn}->{sn}->[0] }; 
+	push @reply, { givenname  => $result->{$dn}->{givenname}->[0] }; 
+	push @reply, { birthday   => $result->{$dn}->{birthday}->[0] }; 
+	push @reply, { cn   	  => $result->{$dn}->{cn}->[0] }; 
+	push @reply, { role       => $result->{$dn}->{role}->[0] }; 
+	push @reply, { lang       => $result->{$dn}->{preferredlanguage}->[0] }; 
 	push @reply, { room => "$room" }; 
-	push @reply, { lang => "$LANG" }; 
 	push @reply, { name => 'logout', value => __("Logout","LOGIN","$LANG"), attributes => [ type => 'label'] };
 	push @reply, { name=>'defaultApplication', value=>$app[1], attributes => [ CATEGORY=>$app[0] , action=>$app[2]] }; 
 	$oss->destroy();
