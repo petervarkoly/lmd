@@ -43,6 +43,7 @@ sub getCapabilities
 		 { allowedRole  => 'sysadmins' },
 		 { category     => 'System' },
 		 { order        => 15 },
+		 { disabled     => 1 },
 		 { variable     => [ "name",        [ type => "label"] ] },
 		 { variable     => [ "install",     [ type => "action", label=>"Action" ] ] },
 		 { variable     => [ "Description", [ type => "label"] ] },
