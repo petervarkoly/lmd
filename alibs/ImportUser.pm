@@ -544,6 +544,13 @@ sub create_pdf
 	}
 #	Encode::_utf8_on($new_file_content);
 	write_file( $tmp_csv_file, $new_file_content);
+	my $format = `file -bi $tmp_csv_file`;
+        chomp $format; $format =~ /charset=(.*)/; $format = $1;
+        if( $format eq 'unknown' ) {
+                $format  = 'iso-8859-1';
+        }
+        system("recode $format..utf8 $tmp_csv_file");
+	$ENV{LC_ALL} = '';
 
 	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
 	my $letter_txt = cmd_pipe("cat /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt");
