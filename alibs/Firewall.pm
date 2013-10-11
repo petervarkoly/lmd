@@ -228,6 +228,7 @@ sub outGoing
 	};
 	# Reading defined FWRules
 	my $RULES = {};
+	my $i = 0;
 	foreach my $RULE ( split / / , `. /etc/sysconfig/SuSEfirewall2; echo -n \$FW_MASQ_NETS` )
 	{
 		next if( $RULE eq "0/0" );
@@ -235,18 +236,21 @@ sub outGoing
 		my $sl = $s;
 		$sl = $HROOMS{$s} if( defined $HROOMS{$s} );
 		$sl = $HWS{$s}    if( defined $HWS{$s} );
+		$sl = "$sl".'###'."$i";
 		$p  = 'all' if( ! defined $p );
 		$RULES->{$sl}->{source}      = $s;
 		$RULES->{$sl}->{destination} = $d;
 		$RULES->{$sl}->{protocol}    = $p;
 		$RULES->{$sl}->{port}        = $port;
+                $i++;
 	}
 	push @rules, { head => [ 'source', 'destination', 'protocol', 'port', 'delete' ] }; 
-	my $i = 0;
+	$i = 0;
 	foreach my $sl ( sort keys %$RULES )
 	{
+		$sl =~ /(.*)###/;
 		push @rules, { line => [ $i , 
-				{ source      => [ [ $RULES->{$sl}->{source} , $sl ], '---DEFAULTS---', $RULES->{$sl}->{source} ] },
+				{ source      => [ [ $RULES->{$sl}->{source} , $1 ], '---DEFAULTS---', $RULES->{$sl}->{source} ] },
 				{ destination => $RULES->{$sl}->{destination} },
 				{ protocol    => ['tcp', 'udp', 'all', '---DEFAULTS---', $RULES->{$sl}->{protocol} ] },
 				{ port	      => $RULES->{$sl}->{port} },

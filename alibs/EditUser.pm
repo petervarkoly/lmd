@@ -669,13 +669,14 @@ sub setProfil
 	return [
 		{ subtitle         => "Set profil for these users:" },
 		{ label            => $list },
-		{ name => 'Win2K',    value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'WinXP',    value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'Win2K3',   value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'Win7',     value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'Linux',    value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'template', value => \@templates, attributes => [ type => 'popup' ] },
-		{ name => 'readOnly', value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'Win2K',       value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'WinXP',       value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'Win2K3',      value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'Win7',        value => 0, attributes => [ type => 'boolean', label => 'Win7 & Win8' ] },
+		{ name => 'Linux',       value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'template',    value => \@templates, attributes => [ type => 'popup' ] },
+		{ name => 'readOnly',    value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'desktopOnly', value => 0, attributes => [ type => 'boolean' ] },
 		{ action           => "cancel" },
 		{ action           => "profil_ro" },
 		{ action           => "profil_rw" },
@@ -708,16 +709,17 @@ sub setProfilRealy
 	my $reply  = shift;
 	my $freeze = decode_base64(main::GetSessionDatas('setProfil'));
 	my @users  = @{ thaw($freeze ) } if( defined $freeze );
-	my $ro     = $reply->{readOnly} ? 'ro' : '';
+	my $ro     = $reply->{readOnly}    ? 'ro' : 'rw';
+	my $do     = $reply->{desktopOnly};
 	my $templ  = $reply->{template};
         foreach my $dn ( @users )
 	{
 		my $uid = get_name_of_dn($dn);
-		system("/usr/sbin/oss_copy_profil.sh $uid Win2K $templ $ro") if( $reply->{Win2K} );
-		system("/usr/sbin/oss_copy_profil.sh $uid WinXP $templ $ro") if( $reply->{WinXP} );
-		system("/usr/sbin/oss_copy_profil.sh $uid Win2K3 $templ $ro")if( $reply->{Win2K3} );
-		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V2 $templ $ro") if( $reply->{Win7} );
-		system("/usr/sbin/oss_copy_profil.sh $uid Linux $templ $ro") if( $reply->{Linux} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Win2K    $templ $ro $do") if( $reply->{Win2K} );
+		system("/usr/sbin/oss_copy_profil.sh $uid WinXP    $templ $ro $do") if( $reply->{WinXP} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Win2K3   $templ $ro $do") if( $reply->{Win2K3} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V2 $templ $ro $do") if( $reply->{Win7} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Linux    $templ $ro $do") if( $reply->{Linux} );
 	}
 	$this->default;
 }
