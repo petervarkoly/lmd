@@ -291,6 +291,7 @@ sub applyUpdates
 	}
 	$PACKAGES =~ s/\s+/ /g;
         $PACKAGES = 'DATE=`/usr/share/oss/tools/oss_date.sh`
+. /etc/profile.d/profile.sh
 echo "/var/log/OSS-UPDATE-$DATE" > /var/adm/oss/update-started
 zypper --no-gpg-checks --gpg-auto-import-keys -n up --auto-agree-with-licenses '.$PACKAGES.' &> /var/log/OSS-UPDATE-$DATE
 if [ $? ]; then 
@@ -347,6 +348,7 @@ sub install
 
         my $tmp = cmd_pipe('at now', 'touch /var/adm/oss/install-started
 DATE=`/usr/share/oss/tools/oss_date.sh`
+. /etc/profile.d/profile.sh
 echo "/var/log/OSS-INSTALL-$DATE" > /var/adm/oss/install-started
 zypper --no-gpg-checks --gpg-auto-import-keys -n '.$install_or_remove.' '.$package.'> /var/log/OSS-INSTALL-$DATE
 rm /var/adm/oss/install-started');
