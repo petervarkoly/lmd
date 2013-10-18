@@ -1622,17 +1622,17 @@ sub get_vendor_netcard
 
 	#first get
 	if( !(-e "/tmp/mac_info") ){
-		cmd_pipe("wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
+		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
 	}
 	$vendor_netcard = cmd_pipe("cat /tmp/mac_info | grep $mac | awk '{ print \$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}'");
 	if( !$vendor_netcard ){
-		cmd_pipe("wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
+		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
 		$vendor_netcard = cmd_pipe("cat /tmp/mac_info | grep $mac | awk '{ print \$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}'");
 	}
 
 	#second get
 	if( !$vendor_netcard ){
-		cmd_pipe("wget -O /tmp/mac_info_2 http://www.coffer.com/mac_find/?string=$mac");
+		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info_2 http://www.coffer.com/mac_find/?string=$mac");
 		my $mac_info = cmd_pipe("cat /tmp/mac_info_2 | grep '<td class=\"table2\"><a href='");
 		my @arr_inf = split("<", $mac_info);
 		$arr_inf[2] =~ /(.*)>(.*)/;

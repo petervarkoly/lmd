@@ -78,7 +78,7 @@ sub default
 	else
 	{
 		system("rm -f $tempfile");
-		system("wget -O $tempfile $url");
+		system(". /etc/profile.d/profile.sh; wget -O $tempfile $url");
 		my $isnet = (-s $tempfile > 0);
 		if (!$isnet) {
 				return {
