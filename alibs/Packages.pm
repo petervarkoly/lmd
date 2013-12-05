@@ -57,10 +57,14 @@ sub default
 	my $this  = shift;
 	if( -e '/var/run/zypp.pid' )
 	{
-		return {
-			TYPE    => 'NOTICE',
-			MESSAGE => 'An other installations or update process is running. Please try it later'
-		}
+		my $tmp = `cat /var/run/zypp.pid`; chomp $tmp;
+                if( $tmp && -d "/proc/$tmp" ) {
+                        return {
+                                TYPE    => 'NOTICE',
+                                MESSAGE => 'An other installations or update process is running. Please try it later'
+                        }
+                }
+                system("rm -f /var/run/zypp.pid");
 	}
 	if ( $this->{SYSCONFIG}->{SCHOOL_REG_CODE} !~ /([0-9A-Z]{4}-[0-9A-Z]{4})-([0-9A-F]{4}-[0-9A-F]{4})-[0-9A-F]{4}/i )
 	{
