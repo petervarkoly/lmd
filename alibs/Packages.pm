@@ -57,10 +57,14 @@ sub default
 	my $this  = shift;
 	if( -e '/var/run/zypp.pid' )
 	{
-		return {
-			TYPE    => 'NOTICE',
-			MESSAGE => 'An other installations or update process is running. Please try it later'
-		}
+		my $tmp = `cat /var/run/zypp.pid`; chomp $tmp;
+                if( $tmp && -d "/proc/$tmp" ) {
+                        return {
+                                TYPE    => 'NOTICE',
+                                MESSAGE => 'An other installations or update process is running. Please try it later'
+                        }
+                }
+                system("rm -f /var/run/zypp.pid");
 	}
 	if ( $this->{SYSCONFIG}->{SCHOOL_REG_CODE} !~ /([0-9A-Z]{4}-[0-9A-Z]{4})-([0-9A-F]{4}-[0-9A-F]{4})-[0-9A-F]{4}/i )
 	{
@@ -291,6 +295,7 @@ sub applyUpdates
 	}
 	$PACKAGES =~ s/\s+/ /g;
         $PACKAGES = 'DATE=`/usr/share/oss/tools/oss_date.sh`
+. /etc/profile.d/profile.sh
 echo "/var/log/OSS-UPDATE-$DATE" > /var/adm/oss/update-started
 zypper --no-gpg-checks --gpg-auto-import-keys -n up --auto-agree-with-licenses '.$PACKAGES.' &> /var/log/OSS-UPDATE-$DATE
 if [ $? ]; then 
@@ -347,6 +352,7 @@ sub install
 
         my $tmp = cmd_pipe('at now', 'touch /var/adm/oss/install-started
 DATE=`/usr/share/oss/tools/oss_date.sh`
+. /etc/profile.d/profile.sh
 echo "/var/log/OSS-INSTALL-$DATE" > /var/adm/oss/install-started
 zypper --no-gpg-checks --gpg-auto-import-keys -n '.$install_or_remove.' '.$package.'> /var/log/OSS-INSTALL-$DATE
 rm /var/adm/oss/install-started');
