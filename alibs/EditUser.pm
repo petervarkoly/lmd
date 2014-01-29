@@ -372,7 +372,7 @@ sub editUser
                 if( $attr eq 'susedeliverytofolder' )
                 {
                   $val = 1;
-                  $val = 0 if( defined $user->{$attr} && $user->{$attr} eq 'no' );
+                  $val = 0 if( defined $user->{$attr} && $user->{$attr}->[0] eq 'no' );
                   push @ret, { $attr => $val };
                   next;
                 }
