@@ -92,6 +92,7 @@ sub getCapabilities
                 { variable     => [ "oxenabled",                [ type => "translatedpopup",  ] ] },
 		{ variable     => [ "sambauserworkstations",    [ type => "translatedpopup",  ] ] },
 		{ variable     => [ "maynotchangepassword",     [ type => "translatedpopup" ] ] },
+		{ variable     => [ "susedeliverytofolder",     [ type => "boolean" ] ] },
                 { variable     => [ "admin",                    [ type => "boolean" ] ] },
                 { variable     => [ "alias",                    [ type => "boolean" ] ] },
                 { variable     => [ "mustchange",               [ type => "boolean" ] ] },
@@ -110,9 +111,7 @@ sub getCapabilities
                 { variable     => [ "susemailforwardaddress",   [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
                 { variable     => [ "susemailacceptaddress",    [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true"] ] },
 		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
-		{ variable     => [ "userpassword",             [ type => "password" ] ] },
-#                { variable     => [ "susemailforwardaddress",   [ type => "list", label => "susemailforwardaddress", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
-#                { variable     => [ "susemailacceptaddress",    [ type => "list", label => "susemailacceptaddress",  help => 'Select Entry to delete', size=>"5", multiple=>"true"] ] }
+		{ variable     => [ "userpassword",             [ type => "password" ] ] }
 	];
 }
 
@@ -367,8 +366,16 @@ sub editUser
 		next if( $attr eq 'rasaccess' && ! $this->{RADIUS} );
 		next if( $attr eq 'role' );
 		next if( $attr =~/^susemail.*address|mail$/ && $user->{mailenabled}->[0] =~ /no/i );
+		next if( $attr eq 'susedeliverytofolder'    && $user->{mailenabled}->[0] =~ /no/i );
 		next if( $attr =~/^sn|givenname|birthday$/  && $this->{ManageStudents} );
 		my $val = undef;
+                if( $attr eq 'susedeliverytofolder' )
+                {
+                  $val = 1;
+                  $val = 0 if( defined $user->{$attr} && $user->{$attr} eq 'no' );
+                  push @ret, { $attr => $val };
+                  next;
+                }
 		if( defined $user->{$attr} )
 		{
 			if( $attr =~ /^susemail.*address$/ )
