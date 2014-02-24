@@ -165,7 +165,8 @@ sub interface
 		"selectWlanUser",
 		"setWlanUser",
 		"ANON_DHCP",
-		"insert_in_to_room"
+		"insert_in_to_room",
+		"install_software",
         ];
 }
 
@@ -567,18 +568,18 @@ sub room
 				  ]};
 		}
 	}
-	return 
-	[
-	   { subtitle => $description }, 
-	   { table    =>  \@lines },
-	   { dn       => $reply->{line} },
-	   { action   => "cancel" },
-	   { action   => "addNewPC" },
-	   { action   => "roomType" },
-	   { action   => "roomGeometry" },
-	   { name => 'action' , value  => 'modifyRoom', attributes => [ label => 'apply' ]  }
-	];
 
+	my @ret;
+	push @ret, @{$reply->{msg}} if( exists($reply->{msg}) );
+	push @ret, { subtitle => $description };
+	push @ret, { table    =>  \@lines };
+	push @ret, { dn       => $reply->{line} };
+	push @ret, { action   => "cancel" };
+	push @ret, { action   => "addNewPC" };
+	push @ret, { action   => "roomType" };
+	push @ret, { action   => "roomGeometry" };
+	push @ret, { name => 'action' , value  => 'modifyRoom', attributes => [ label => 'apply' ]  };
+	return \@ret;
 }
 
 sub editPC
@@ -638,6 +639,7 @@ sub modifyRoom
 	$reply->{line}  = $reply->{dn};
 	my $ERROR	= undef;
 	my $deleted	= 0;
+	my %swinstall;
 
 	foreach my $dn ( keys %{$reply->{ws}} )
 	{
@@ -654,7 +656,16 @@ sub modifyRoom
 			my $wlan   = $reply->{ws}->{$dn}->{wlanaccess} ? 'yes' : 'no';
 			$this->set_config_value($dn,'WLANACCESS',$wlan);
 		}
+
+		my $old_hwconfig = $this->get_config_value(  $dn, 'HW');
 		$this->set_config_value($dn,'HW',$reply->{ws}->{$dn}->{hwconfig});
+		my $new_hw_dn = 'configurationKey='.$reply->{ws}->{$dn}->{hwconfig}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+		my $softwares = $this->get_config_values( $new_hw_dn, 'SWPackage', 'ARRAY' );
+		if( (ref($softwares) eq 'ARRAY') and ($old_hwconfig ne $reply->{ws}->{$dn}->{hwconfig}) ){
+			$swinstall{$dn}->{old_hw} = $old_hwconfig;
+			$swinstall{$dn}->{new_hw} = $reply->{ws}->{$dn}->{hwconfig};
+		}
+
 		my $hw     = $reply->{ws}->{$dn}->{hwaddress};
 		if( check_mac( $hw ) )
 		{
@@ -694,7 +705,12 @@ sub modifyRoom
                 NOTRANSLATEMESSAGE => $ERROR
            }
 	}
-	$this->room($reply);
+
+	if( keys(%swinstall) ){
+		$this->set_sofware(\%swinstall, $reply->{dn});
+	}else{
+		$this->room($reply);
+	}
 }
 
 sub roomType
@@ -1622,17 +1638,17 @@ sub get_vendor_netcard
 
 	#first get
 	if( !(-e "/tmp/mac_info") ){
-		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
+		cmd_pipe("wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
 	}
 	$vendor_netcard = cmd_pipe("cat /tmp/mac_info | grep $mac | awk '{ print \$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}'");
 	if( !$vendor_netcard ){
-		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
+		cmd_pipe("wget -O /tmp/mac_info http://standards.ieee.org/develop/regauth/oui/oui.txt");
 		$vendor_netcard = cmd_pipe("cat /tmp/mac_info | grep $mac | awk '{ print \$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}'");
 	}
 
 	#second get
 	if( !$vendor_netcard ){
-		cmd_pipe(". /etc/profile.d/profile.sh; wget -O /tmp/mac_info_2 http://www.coffer.com/mac_find/?string=$mac");
+		cmd_pipe("wget -O /tmp/mac_info_2 http://www.coffer.com/mac_find/?string=$mac");
 		my $mac_info = cmd_pipe("cat /tmp/mac_info_2 | grep '<td class=\"table2\"><a href='");
 		my @arr_inf = split("<", $mac_info);
 		$arr_inf[2] =~ /(.*)>(.*)/;
@@ -1673,4 +1689,146 @@ sub get_free_pcs_of_room
 	main::AddSessionDatas($freeze,'hosts');
 	return @hosts;
 }
+
+sub set_sofware
+{
+	my $this      = shift;
+	my $swinstall = shift;
+	my $room_dn   = shift;
+
+        my @ws = ( 'workstations' );
+        push @ws, { head => [ 'pc_name', 'installed_sw', 'new_sw', 'install_new_sw' ] };
+	foreach my $dn_ws (sort keys %{$swinstall} ){
+		my $hostname = $this->get_attribute($dn_ws,'cn');
+                my $user_dn = $this->get_user_dn($hostname);
+
+                my $oldsw = '';
+                foreach my $i (sort @{$this->search_vendor_object_for_vendor( 'osssoftware', $user_dn)}){
+			my $sw_name = $this->get_attribute($i, 'configurationKey');
+			my $status  = $this->get_attribute($i, 'configurationValue');
+			$oldsw .= $sw_name."<BR>" if( $status eq 'installed');
+		}
+
+		my $newsw = '';
+		my $new_hw_dn = 'configurationKey='.$swinstall->{$dn_ws}->{new_hw}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+		foreach my $i ( @{ $this->get_config_values($new_hw_dn,'SWPackage','ARRAY') } ){
+			$newsw .= $i."<BR>";
+		}
+
+		push @ws, { line => [ $dn_ws,
+					{ name => 'pcname',      value => $hostname,    attributes => [type => 'label'] },
+					{ name => 'oldsw',       value => $oldsw,       attributes => [type => 'label'] },
+					{ name => 'newsw',       value => $newsw,       attributes => [type => 'label'] },
+					{ name => 'workstation', value => '1',          attributes => [type => 'boolean'] },
+					{ name => 'hw_dn',       value => "$new_hw_dn", attributes => [type => 'hidden'] }
+				]};
+	}
+
+	my @ret;
+	push @ret, { action => 'cancel' };
+	if( scalar(@ws) > 2 ){
+		push @ret, { NOTICE =>  main::__('For the PCs below there was changed the hw configuration, software packages belonging to the current hw are available for installation.')."<BR>".
+					main::__('Please, leave selected the PCs where do you wish to install the new softwares.') };
+	        push @ret, { table  => \@ws };
+		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Run now the install/deinstall command on these selected workstations'] };
+        	push @ret, { action => 'install_software' };
+	}
+        push @ret, { dn => $room_dn };
+        return \@ret;
+}
+
+sub install_software
+{
+	my $this   = shift;
+	my $reply  = shift;
+	$reply->{line}  = $reply->{dn};
+
+	my $result;
+	foreach ( keys %{$reply->{workstations}} ){
+		next if( !$reply->{workstations}->{$_}->{workstation} );
+		my @ws_dns;
+		my $hostname = $this->get_attribute($_,'cn');
+		push @ws_dns, $this->get_user_dn($hostname);
+
+		my $hw_dn  = $reply->{workstations}->{$_}->{hw_dn};
+		my $softwares = $this->get_config_values( $hw_dn, 'SWPackage', 'ARRAY' );
+		my @sw_name_list;
+		@sw_name_list = @{$softwares} if( ref($softwares) eq 'ARRAY');
+		my $tmp;
+		if(ref($softwares) eq 'ARRAY' ){
+			$tmp = $this->software_install_cmd(\@ws_dns, \@sw_name_list, $reply->{sw_installing_now});
+		}
+		print Dumper($tmp);
+		foreach my $type ( sort keys %{$tmp} ){
+			next if( ref($tmp->{$type}) ne 'HASH' );
+			foreach my $sw_name ( keys %{$tmp->{$type}->{$hostname}} ){
+				$result->{$type}->{$hostname}->{$sw_name} = $tmp->{$type}->{$hostname}->{$sw_name};
+			}
+		}
+	}
+	#print Dumper($result);
+
+	my $msg = $this->createSwInstallationStatusTable($result);
+	print Dumper($msg);
+
+	$reply->{msg} = $msg;
+	$this->room($reply);
+}
+
+sub createSwInstallationStatusTable
+{
+        my $this   = shift;
+        my $result = shift;
+        my @ret;
+
+        # Selected pc's and softwares
+#        push @ret, { NOTICE => main::__('selected_computer: ')." ".$result->{selected_computer}."<BR>".main::__('selected_software: ')." ".$result->{selected_software} };
+
+        # Missing sw requiremente
+        push @ret, { ERROR  => main::__('The following requirement packages are missing:')." <B>".$result->{missing_sw_list}."</B>" } if($result->{missing_sw_list});
+
+        # Install cmd 
+        my $inst_ok  = '';
+        my $inst_nok = '';
+        foreach my $pc (sort keys %{$result->{installation_scheduled}} ){
+                foreach my $sw (sort keys %{$result->{installation_scheduled}->{$pc}} ){
+                        if( $result->{installation_scheduled}->{$pc} ){
+                                $inst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+                        }else{
+                                $inst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+                        }
+                }
+        }
+        push @ret, { NOTICE => main::__('Executable successfully install command in the following PCs:')."<BR>".$inst_ok } if($inst_ok);
+        push @ret, { ERROR  => main::__('Install command can not be executable successfully the following PCs, because there is no license key or have other problem:')."<BR>".$inst_nok } if($inst_nok);
+
+	# Deinstall cmd
+        my $deinst_ok  = '';
+        my $deinst_nok = '';
+        foreach my $pc (sort keys %{$result->{deinstallation_scheduled}} ){
+                foreach my $sw (sort keys %{$result->{deinstallation_scheduled}->{$pc}} ){
+                        if( $result->{deinstallation_scheduled}->{$pc} ){
+                                $deinst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+                        }else{
+                                $deinst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+                        }
+                }
+        }
+        push @ret, { NOTICE => main::__('Executable successfully deinstall command in the following PCs:')."<BR>".$deinst_ok } if($deinst_ok);
+        push @ret, { ERROR => main::__('Deinstall command can not be executable successfully the following PCs, because there is not installed:')."<BR>".$deinst_nok } if($deinst_nok);
+
+        # Exists status
+        my $exist = '';
+        foreach my $pc (sort keys %{$result->{exists_status}} ){
+                foreach my $sw (sort keys %{$result->{exists_status}->{$pc}} ){
+                        my $status = $result->{exists_status}->{$pc}->{$sw};
+                        $exist .= $pc."  &lt;----  ".$sw."  <B>(".main::__($status).")</B>, <BR>";
+                }
+        }
+        push @ret, { NOTICE => main::__('On the following PCs have the following command to be implemented:')."<BR>".$exist } if($exist);
+
+        return \@ret;
+}
+
+
 1;

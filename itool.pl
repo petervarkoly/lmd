@@ -103,7 +103,7 @@ if( $action eq 'getDOMAIN' )
 
 =item
 Ex: 
-   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getRESTORE&IP=172.16.2.1" 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getINSTALLATIONS&IP=10.0.2.1" 
 =cut
 if( $action eq 'getINSTALLATIONS' )
 {
@@ -120,31 +120,62 @@ if( $action eq 'getINSTALLATIONS' )
 	my $hostname = $oss->get_attribute($ws_dn,'cn');
 	my $ws_user_dn = $oss->get_user_dn($hostname);
 	$ws_user_dn = 'o=oss,'.$ws_user_dn;
-#print $ws_user_dn."\n";
 	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', "$ws_user_dn");
-#print Dumper($obj);
-	if( scalar(@$obj) > 0 ){
+	if( (defined $obj) and (scalar(@$obj) > 0) ){
+		my @sw_name_list = ();
 		foreach my $sw_user_dn ( @$obj ){
 			my $sw_name   = $oss->get_attribute($sw_user_dn,'configurationKey');
-			my $sw_dn     = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
-			my $sw_type   = $oss->get_config_value($sw_dn,'TYPE');
+			push @sw_name_list, $sw_name;
+		}
+		my $result_sw = $oss->get_requiremente_sw(\@sw_name_list);
+		# print Dumper($new_sw_list);
+
+		# set deinstall, install, other status priority
+		my @inst;
+		my @deinst;
+		my @others;
+		foreach my $sw_dn ( @{$result_sw->{sorted_sw_list}} ){ # It is important not to sorted.
+			my $sw_name    = $oss->get_attribute($sw_dn, 'configurationKey');
+			my $sw_user_dn = 'configurationKey='.$sw_name.',o=osssoftware,'.$ws_user_dn;
+			next if( !$oss->exists_dn($sw_user_dn) );
+			my $sw_status = $oss->get_attribute($sw_user_dn,'configurationValue');
+			if($sw_status eq 'installation_scheduled'){
+				push @inst, $sw_dn;
+			}elsif($sw_status eq 'deinstallation_scheduled'){
+				push @deinst, $sw_dn;
+			}else{
+				push @others, $sw_dn;
+			}
+		}
+		my @last_array = reverse(@deinst);
+		push @last_array, @inst;
+		push @last_array, @others;
+
+		# get install cmd
+		foreach my $sw_dn ( @last_array ){ # It is important not to sorted.
+			my $sw_name    = $oss->get_attribute($sw_dn, 'configurationKey');
+			my $sw_type    = $oss->get_config_value($sw_dn,'TYPE');
+			my $sw_user_dn = 'configurationKey='.$sw_name.',o=osssoftware,'.$ws_user_dn;
+			next if( !$oss->exists_dn($sw_user_dn) );
 			my $sw_status = $oss->get_attribute($sw_user_dn,'configurationValue');
 			my $sw_options_inst = '';
 			if ( $sw_status eq 'installation_scheduled' ){
 				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_INSTALLATION') || '-';
-			} elsif ( $sw_status eq 'deinstallation_scheduled' ){
+			}elsif( $sw_status eq 'deinstallation_scheduled' ){
 				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_DEINSTALLATION') || '-';
+			}else{
+				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_INSTALLATION') || '-';
 			}
 			my $tmp = cmd_pipe("ls /srv/itool/swrepository/$sw_name/*.msi");
 			$tmp =~ /^\/srv\/itool\/swrepository\/$sw_name\/(.*\.msi).*/;
 			my $installkit = $1;
-			$sw_options_inst =~ s/PACKAGE/"I:\\swrepository\\$sw_name\\$installkit"/;
+#			$sw_options_inst =~ s/PACKAGE/"I:\\swrepository\\$sw_name\\$installkit"/;
+			$sw_options_inst =~ s/PACKAGE/"\\\\install\\itool\\swrepository\\$sw_name\\$installkit"/;
 			$packages .= "getINSTALLATIONS\$".$sw_name."##".$sw_type."##".$sw_status."##".$sw_options_inst."\n";
 		}
 	}else{
 		$packages = "getINSTALLATIONS\$-";
 	}
-
 
         print $cgi->header(-charset=>'utf-8');
         print $cgi->start_html(-title=>'itool');
@@ -266,5 +297,33 @@ if( $action eq 'getPRODUCTKEY' )
 	print $cgi->header(-charset=>'utf-8');
 	print $cgi->start_html(-title=>'itool');
 	print "PRODUCTKEY $prodkey\n";
+	print $cgi->end_html();
+}
+
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getPRODUCTID&SW_NAME=AdobeReaderV11.0.04.DE" 
+=cut
+if( $action eq 'getPRODUCTID' )
+{
+	my $ip        = $cgi->param("IP");
+	my $sw_name   = $cgi->param("SW_NAME");
+	my $productid = "";
+
+	if( !defined $ip )
+	{
+		$ip  = $cgi->remote_addr();
+	}
+	my $ws_dn = $oss->get_host($ip);
+	my $hostname = $oss->get_attribute($ws_dn,'cn');
+
+	my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
+	if( $oss->exists_dn( $sw_dn )  ){
+		$productid = $oss->get_config_value($sw_dn, 'PRODUCT_ID');
+	}
+
+	print $cgi->header(-charset=>'utf-8');
+	print $cgi->start_html(-title=>'itool');
+	print "PRODUCTID##$productid\n";
 	print $cgi->end_html();
 }
