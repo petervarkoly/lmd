@@ -1688,20 +1688,24 @@ sub call_oss_base
     }
     elsif( ref $result eq 'ARRAY' )
     {
-	$writer->startTag($ACTION, type => 'popup', label => __($ACTION,'OSS_BASE') );
+	$writer->startTag('items');
     	foreach my $v ( @$result )
 	{
 	    if( ref $v eq 'HASH' )
 	    {
-		my $k = (keys(%$v))[0];
-		$writer->dataElement('value',$k, label => $v->{$k} )
+	    	$writer->startTag('item');
+		foreach my $k( keys(%$v) )
+		{
+			$writer->dataElement($k, $v->{$k} );
+		}
+		$writer->endTag('item');
 	    }
 	    else
 	    {
 		$writer->dataElement('value',$v);
 	    }
 	}
-	$writer->endTag($ACTION);
+	$writer->endTag('items');
     }
     else
     {
