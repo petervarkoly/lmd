@@ -203,6 +203,8 @@ sub getCapabilities
 		{ variable     => [ 'dn',                [ type => 'hidden' ]]  },
 		{ variable     => [ 'rdn',               [ type => 'hidden' ]]  },
 		{ variable     => [ 'roomtype',          [ type => 'hidden' ]]  },
+		{ variable     => [ 'OS',                [ type => 'popup' ]] },
+		{ variable     => [ 'ownership',         [ type => 'popup' ]] },
 		{ variable     => [ 'role',              [ type => 'popup' ]] },
 		{ variable     => [ 'class',             [ type => 'popup' ]] },
 		{ variable     => [ 'workgroup',         [ type => 'popup' ]] },
