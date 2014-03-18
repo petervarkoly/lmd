@@ -167,3 +167,12 @@ test:
 	if [ -e test ] ; then \
 	     cd test; \
 	fi
+
+state:
+	diff -u lmd.pl      $(DESTDIR)/usr/sbin/
+	find tools  -type f  -exec diff -u {} $(LMDDIR)/{} \˛
+	find lang   -type f  -exec diff -u {} $(LMDDIR)/{} \˛
+	find alibs  -type f  -exec diff -u {} $(LMDDIR)/{} \˛
+	find helper -type f  -exec diff -u {} $(LMDDIR)/{} \˛
+	diff -u itool.pl    $(DESTDIR)/srv/www/cgi-bin/
+
