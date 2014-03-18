@@ -191,6 +191,7 @@ sub getCapabilities
 		{ variable     => [ 'del_room',          [ type => 'action', label => 'delete' ]] },
 		{ variable     => [ 'set_free',          [ type => 'boolean' ]]  },
 		{ variable     => [ 'wlanaccess',        [ type => 'boolean' ]]},
+		{ variable     => [ 'mdm',               [ type => 'boolean' ]]},
 		{ variable     => [ 'master',            [ type => 'boolean' ]]},
 		{ variable     => [ 'delete',            [ type => 'boolean' ]]},
 		{ variable     => [ 'free_busy',         [ type => 'img',    style => 'margin-right:80px;' ]]},
@@ -202,6 +203,9 @@ sub getCapabilities
 		{ variable     => [ 'dn',                [ type => 'hidden' ]]  },
 		{ variable     => [ 'rdn',               [ type => 'hidden' ]]  },
 		{ variable     => [ 'roomtype',          [ type => 'hidden' ]]  },
+		{ variable     => [ 'role',              [ type => 'popup' ]] },
+		{ variable     => [ 'class',             [ type => 'popup' ]] },
+		{ variable     => [ 'workgroup',         [ type => 'popup' ]] },
 		{ variable     => [ 'freerooms',         [ type => 'popup' ]] },
 		{ variable     => [ 'rooms',             [ type => 'popup' ]] },
 		{ variable     => [ 'dhcpOptions',       [ type => 'popup' ]] },
@@ -1164,7 +1168,7 @@ sub addPC
 	}
 	else
 	{
-		if( $reply->{wlaneccess} && scalar( @HWS ) == 1 )
+		if( $reply->{wlanaccess} && scalar( @HWS ) == 1 )
 		{
 			$reply->{HOSTDN} = $HOSTDN;
 			$this->selectWlanUser($reply);
@@ -1336,7 +1340,14 @@ sub selectWlanUser
                 	push @users , [ $dn, $user->{$dn}->{uid}->[0].' '.$user->{$dn}->{cn}->[0].' ('.$user->{$dn}->{description}->[0].')' ];
         	}
 		my @ret = ({ subtitle    => 'Select the User for this WLAN Device!' } );
-		push @ret, { user => \@users }; 
+		push @ret, { user => \@users };
+		#TODO SELECT IT FROM SCHOOLCONFIG
+		if( -e "/etc/sysconfig/OSS_MDM" )
+		{
+		   push @ret, { mdm => 0 };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---','IOS' ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,'COD'] };
+		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'searchAgain' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
 		push @ret, { name => 'rightaction', value => "room",             attributes => [ label => 'cancel' ]  };
@@ -1352,7 +1363,14 @@ sub selectWlanUser
 		push @ret, { role        => $roles};
 		push @ret, { class       => $classes };
 		push @ret, { workgroup   => $workgroups };
-		push @ret, { name => 'rightaction', value => "selectWlanUser", attributes => [ label => 'search' ]  };
+		#TODO SELECT IT FROM SCHOOLCONFIG
+		if( -e "/etc/sysconfig/OSS_MDM" )
+		{
+		   push @ret, { mdm => 0 };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---','IOS' ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,'COD'] };
+		}
+		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'search' ]  };
 		push @ret, { name => 'HOSTDN',      value => $reply->{HOSTDN},   attributes => [ type  => 'hidden' ] };
 		push @ret, { name => 'line',        value => $reply->{line},     attributes => [ type  => 'hidden' ] };
 		push @ret, { name => 'FILTERED',    value => 1,                  attributes => [ type  => 'hidden' ] };
@@ -1371,6 +1389,16 @@ sub setWlanUser
 	$this->{LDAP}->modify($reply->{user}, delete => { rassAccess => 'no' } );
 	$this->{LDAP}->modify($reply->{user}, delete => { rassAccess => 'all' } );
 	$this->{LDAP}->modify($reply->{user}, add    => { rassAccess => $HW } );
+	#TODO SELECT IT FROM SCHOOLCONFIG
+	if( -e "/etc/sysconfig/OSS_MDM" )
+	{
+	    push    @INC,"/usr/share/lmd/helper/";
+	    require OSSMDM;
+	    my $mdm = new OSSMDM;
+	    #TODO IF ownership is BYOD the user can make the installation.
+	    my $cn = $this->get_attribute($reply->{HOSTDN},'cn');
+	    $mdm->add_enrollment(0,$cn,0,$reply->{OS},$reply->{ownership});
+	}
 	$this->room($reply);
 }
 
