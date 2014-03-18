@@ -41,6 +41,7 @@ sub interface
 		"delete_img",
 		"set_default_img",
 		"sw_autoinstall",
+		"realy_set_sofware",
 		"set_sofware",
         ];
 }
@@ -73,6 +74,7 @@ sub getCapabilities
 		{ variable     => [ 'description',          [ type => 'label'] ]},
 		{ variable     => [ 'version',              [ type => 'label'] ]},
 		{ variable     => [ 'type',                 [ type => 'label'] ]},
+		{ variable     => [ 'categori_name',        [ type => 'label'] ]},
 	];
 }
 
@@ -197,7 +199,7 @@ sub editHW
 			push @table , { line => [ $_ , { name   => $_ } , 
 					       { name   =>'val', value => $VALUES{$_}, attributes=> [ type => 'date' ] } ] };
 		}
-		elsif( $_ eq 'SWPackage' ){
+		elsif( $_ eq 'SWPackage' or $_ eq 'SWPackageCategory' ){
 		}else
 		{
 			push @table , { line => [ $_ , { notranslate_name   => $_ } , 
@@ -405,14 +407,8 @@ sub start
 	$PARTITIONS .= $WORKSTATIONS;
 print "\nPARTITIONS $PARTITIONS\n";
 	my $count = `echo "$PARTITIONS" | oss_restore_workstations.pl`;
-	my $sw_inst_msg = $this->install_default_software($reply);
 
 	my @ret;
-	if( scalar(@$sw_inst_msg) > 0 ){
-		foreach my $item (@$sw_inst_msg){
-			push @ret, $item;
-		}
-	}
 	if ( $reply->{multicast} )
 	{
 		push @ret, { label  => 'start_imaging' };
@@ -421,6 +417,9 @@ print "\nPARTITIONS $PARTITIONS\n";
 		push @ret, { action => 'startMulticast' };
 	}
 	push @ret, { NOTICE => main::__('pxe_written') };
+
+	my $sw_inst_msg = $this->install_default_software($reply, 0);
+	push @ret , @$sw_inst_msg if( scalar(@$sw_inst_msg) > 1 );
 	return \@ret;
 }
 
@@ -518,48 +517,44 @@ sub sw_autoinstall
 	my $this   = shift;
 	my $reply  = shift;
 	my $hw_dn  = 'configurationKey='.$reply->{dn}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	my $hash;
+	my $hash   = $this->get_sofware_categorie();
 	my @ret;
 
-	my $obj = $this->search_vendor_object_for_vendor( 'osssoftware', "ou=Computers,$this->{LDAP_BASE}");
-	foreach my $sw_dn ( sort @$obj )
-	{
-		my $h = $this->get_config_values($sw_dn, "", "HASH");
-		$hash->{$h->{CATEGORIE}->[0]}->{$sw_dn} = $h;
+	my @categories = ( 'categories' );
+	push @categories, { head => [ '', 'categori_name', 'package_list', '' ] };
+	foreach my $categorie ( sort keys %{$hash} ){
+		my $package_list = '';
+		my @sw_list;
+		my $softwarePerCategory = '';
+		foreach my $sw_dn ( sort keys %{$hash->{$categorie}} ){
+			$package_list .= $hash->{$categorie}->{$sw_dn}."<BR>";
+			push @sw_list, $hash->{$categorie}->{$sw_dn};
+		}
+		my @first_package = split("<BR>", $package_list);
+
+		my @item = ( "$categorie" );
+		if( $this->check_config_value($hw_dn, 'SWPackageCategory', "$categorie") ){
+			push @item, {inst => "1"};
+		}else{
+			push @item, {inst => ""};
+		}
+		push @item, {categori_name => $categorie};
+		push @item, {name => 'package_list', value => $first_package[0]." ...", attributes => [ type => 'label', help => $package_list]};
+		push @categories, { line => \@item };
+
 	}
 
-	foreach my $categorie ( sort keys %{$hash} )
-	{
-		push @ret, { label => $categorie };
-		my @p = ( "$categorie" );
-		push @p, { head => [ '', 'name', 'description', 'Version', 'type' ] };
-		foreach my $sw_dn ( sort keys %{$hash->{$categorie}} )
-		{
-			my $pkg = $this->get_attribute( $sw_dn, 'configurationKey');
-			my $is_set = $this->check_config_value( $hw_dn, 'SWPackage', "$pkg");
-			push @p, { line => [ $sw_dn,
-						{ inst => "$is_set" },
-						{ namep => $pkg },
-						{ description => $hash->{$categorie}->{$sw_dn}->{DESCRIPTION}->[0].'<BR><a href="'.$hash->{$categorie}->{$sw_dn}->{LICENSING}->[0].'" target="_blank">'.main::__('licens_link').'</a>'},
-						{ version => $hash->{$categorie}->{$sw_dn}->{VERSION}->[0] },
-						{ type => $hash->{$categorie}->{$sw_dn}->{TYPE}->[0] },
-				]};
-		}
-                push @ret, { table  => \@p };
-        }
-
 	push @ret, { subtitle => 'set_software_to_img' };
+	push @ret, { table  => \@categories };
 	push @ret, { action => 'cancel' };
-	if( keys %{$hash} )
-	{
+	if( keys %{$hash} ){
 		push @ret, { NOTICE => main::__('sw_autoinstall_note') };
 		push @ret, { dn => $reply->{dn} };
 		push @ret, { action => 'set_sofware' };
 	}else{
 		push @ret, { NOTICE => main::__('not_exist_software_package') };
 	}
-	return \@ret;
-
+	return \@ret;	
 }
 
 sub set_sofware
@@ -568,156 +563,205 @@ sub set_sofware
         my $reply  = shift;
 	my $hwconf = $reply->{dn};
 	my $hw_dn  = 'configurationKey='.$hwconf.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	delete($reply->{NOTICE});
-	delete($reply->{APPLICATION});
-	delete($reply->{SESSIONID});
-	delete($reply->{CATEGORY});
-	delete($reply->{ACTION});
-	delete($reply->{label});
-	delete($reply->{rightaction});
-	delete($reply->{dn});
+	my @ret;
 
-	foreach my $categori ( keys %{$reply})
+	# clean swPackages from hwconf ldap settings
+	my $addedSoftwares = $this->get_config_values($hw_dn, 'SWPackage', 'ARRAY');
+	if( $addedSoftwares->[0] ){
+		foreach my $hw_sw_value ( sort @$addedSoftwares ){
+			$this->delete_config_value( $hw_dn, 'SWPackage', "$hw_sw_value");
+		}
+	}
+	$addedSoftwares = $this->get_config_values($hw_dn, 'SWPackageCategory', 'ARRAY');
+        if( $addedSoftwares->[0] ){
+		foreach my $hw_sw_value ( sort @$addedSoftwares ){
+			$this->delete_config_value( $hw_dn, 'SWPackageCategory', "$hw_sw_value");
+		}
+	}
+
+	# insert swPackages to hwconf ldap settings
+	foreach my $category ( keys %{$reply->{categories}})
 	{
-		foreach my $sw_dn ( keys %{$reply->{$categori}} )
+		if( $reply->{categories}->{$category}->{inst} )
 		{
-			my $sw_name = $this->get_attribute($sw_dn, 'configurationKey');
-			if( $reply->{$categori}->{$sw_dn}->{inst} )
-			{
+			$this->add_config_value( $hw_dn, 'SWPackageCategory', "$category");
+			my $category_sw_list = $this->get_sofware_categorie($category);
+			foreach my $sw_dn ( sort keys %{$category_sw_list->{$category}} ){
+				my $sw_name = $category_sw_list->{$category}->{$sw_dn};
 				$this->add_config_value( $hw_dn, 'SWPackage', "$sw_name");
-			}else{
-				$this->delete_config_value( $hw_dn, 'SWPackage', "$sw_name");
 			}
 		}
 	}
 
-	$reply->{dn} = $hwconf;
-	$this->sw_autoinstall($reply);
+
+	my $softwares = $this->get_config_values( $hw_dn, 'SWPackage', 'ARRAY' );
+	my $newsw = '';
+	foreach my $i ( @{$softwares}){
+		$newsw .= $i."<BR>";
+	}
+	my @ws = ( 'workstations' );
+	push @ws, { head => [ 'pc_name', 'installed_sw', 'new_sw', 'install_new_sw' ] };
+	foreach my $room ($this->get_rooms()){
+		my $dn_room = $room->[0];
+		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} ){
+			if( $this->check_config_value($dn_ws,'HW',$hwconf) ){
+				my $hostname = $this->get_attribute($dn_ws,'cn');
+				my $user_dn = $this->get_user_dn($hostname);
+				my $oldsw = '';
+				foreach my $i (sort @{$this->search_vendor_object_for_vendor( 'osssoftware', $user_dn)}){
+					my $sw_name = $this->get_attribute($i, 'configurationKey');
+					my $status  = $this->get_attribute($i, 'configurationValue');
+					$oldsw .= $sw_name."<BR>" if( $status eq 'installed');
+				}
+				push @ws, { line => [ $dn_ws, 
+							{ name => 'pcname',      value => $hostname, attributes => [type => 'label'] },
+							{ name => 'oldsw',       value => $oldsw,    attributes => [type => 'label'] },
+							{ name => 'newsw',       value => $newsw,    attributes => [type => 'label'] },
+							{ name => 'workstation', value => '1',       attributes => [type => 'boolean'] },
+						 ]};
+			}
+		}
+	}
+
+	push @ret, { subtitle => 'set_software_to_img' };
+	push @ret, { NOTICE => 'Software category was added successfully to the current hw config!' };
+	push @ret, { action => 'cancel' };
+	if( scalar(@ws) > 2 ){
+		push @ret, { NOTICE =>  main::__('It was changed the available software package of the hw config, so it  can be installed for the PCs bellow.')."<BR>".
+					main::__('Please, leave selected the PCs where do you wish to install the new softwares.') };
+		push @ret, { table  => \@ws };
+		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Run now the install/deinstall command on these selected workstations'] };
+		push @ret, { action => 'realy_set_sofware' };
+	}else{
+		push @ret, { NOTICE => 'There is no hw config associated to the PCs bellow' };
+	}
+	push @ret, { dn => $reply->{dn} };
+	return \@ret;
+}
+
+sub realy_set_sofware
+{
+	my $this  = shift;
+	my $reply = shift;
+	my $hw_dn = 'configurationKey='.$reply->{dn}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	$reply->{hw} = $reply->{dn};
+	$this->install_default_software($reply, $reply->{sw_installing_now});
 }
 
 sub install_default_software
 {
 	my $this   = shift;
 	my $reply  = shift;
-        my $hw_dn  = 'configurationKey='.$reply->{hw}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	my $SOFTWARE = $this->get_config_values( $hw_dn, 'SWPackage' );
+	my $sw_installing_now = shift || 0;
+	my $hw_dn  = 'configurationKey='.$reply->{hw}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
 
-	my @workstations;
-	if( $reply->{workstations}->{all}->{workstation} )
-	{
-		my $result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DHCP_BASE},
-						    scope  => 'sub',
-						    filter =>  '(&(objectClass=dhcpHost)(configurationValue=HW='.$reply->{hw}.'))',
-						    attrs  => ['cn'],
-					);
-		my $RES = $result->as_struct;
-		foreach my $dn ( sort keys %$RES)
-		{
-			push @workstations, $RES->{$dn}->{cn}->[0];
+	my @ws_dns;
+	if( exists($reply->{workstations}) ){
+		if( $reply->{workstations}->{all}->{workstation} ){
+			my $result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DHCP_BASE},
+							    scope  => 'sub',
+							    filter =>  '(&(objectClass=dhcpHost)(configurationValue=HW='.$reply->{hw}.'))',
+							    attrs  => ['cn'],
+							);
+			my $RES = $result->as_struct;
+			foreach my $dn ( sort keys %$RES){
+				my $hostname = $RES->{$dn}->{cn}->[0];
+				push @ws_dns, $this->get_user_dn($hostname);
+			}
+		}else{
+			foreach ( keys %{$reply->{workstations}} ){
+				next if ( $_ eq 'all' );
+				if( $reply->{workstations}->{$_}->{workstation} ){
+					my $hostname = $this->get_attribute($_,'cn');
+					push @ws_dns, $this->get_user_dn($hostname);
+				}
+			}
 		}
-	}
-	else
-	{
-		foreach ( keys %{$reply->{workstations}} )
+	}else{
+		foreach my $room ($this->get_rooms())
 		{
-			next if ( $_ eq 'all' );
-			if( $reply->{workstations}->{$_}->{workstation} )
+			my $dn_room = $room->[0];
+			foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} )
 			{
-				push @workstations, $this->get_attribute($_, 'cn')
+				if( $this->check_config_value($dn_ws,'HW',$reply->{hw}) )
+				{
+					my $hostname = $this->get_attribute($dn_ws,'cn');
+					push @ws_dns, $this->get_user_dn($hostname);
+				}
 			}
 		}
+		
 	}
+	#print Dumper(@ws_dns);
 
-	my $selected_computer = join(", ", @workstations);
-	my $selected_software = '';
-	$selected_software = join(", ", @$SOFTWARE) if($SOFTWARE ne '');
-	my $no_prodkey = "";
-	foreach my $ws_name ( sort @workstations ){
-		my $ws_user_dn = 'o=oss,'.$this->get_user_dn("$ws_name");
-		if( !$this->exists_dn($ws_user_dn)  )
-		{
-			my $result = $this->{LDAP}->add( dn =>  $ws_user_dn,
-                                            attr => [
-                                                objectclass => [ 'top', 'organization' ],
-                                                o           => 'oss'
-					]);
-			if( $result->code )
-			{
-				$this->ldap_error($result);
-				print STDERR "Error by creating $ws_user_dn\n";
-				print STDERR $this->{ERROR}->{code}."\n";
-				print STDERR $this->{ERROR}->{text}."\n";
-			}
-		}
-		my $obj = $this->search_vendor_object_for_vendor( 'osssoftware', "$ws_user_dn");
-		if( scalar(@$obj) > 0 ){
-			foreach my $sw_user_dn ( @$obj ){
-				my $sw_name = $this->get_attribute( $sw_user_dn, 'configurationKey' );
-				my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$this->{SYSCONFIG}->{COMPUTERS_BASE};
-				my $allocationtype = $this->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
-				my $status = 0;
-				if( $allocationtype eq "NO_LICENSE_KEY" )
-				{
-					$status = 1;
-				}
-				elsif( !$this->exists_dn("o=productkeys,".$sw_dn) and ($allocationtype ne "NO_LICENSE_KEY"))
-				{
-					$status = 0;
-					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>";
-				}
-				else
-				{
-					$status = $this->prodkey_allocation($sw_dn, $ws_name);
-					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
-				}
-				if($status){
-					$this->modify_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled");
-					insert_host_to_wpkghostsxml($ws_name);
-					if( !-e "/srv/itool/swrepository/logs/$ws_name/" ){
-						cmd_pipe("mkdir /srv/itool/swrepository/logs/$ws_name/");
-					}
-				}
-			}
-		}
-		else
-		{
-			foreach my $sw_name ( @$SOFTWARE ){
-				my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$this->{SYSCONFIG}->{COMPUTERS_BASE};
-				my $allocationtype = $this->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
-				my $status = 0;
-				if( $allocationtype eq "NO_LICENSE_KEY" )
-				{
-					$status = 1;
-				}
-				elsif( !$this->exists_dn("o=productkeys,".$sw_dn) and ($allocationtype ne "NO_LICENSE_KEY"))
-				{
-					$status = 0;
-					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>";
-				}
-				else
-                                {
-					$status = $this->prodkey_allocation($sw_dn, $ws_name);
-					$no_prodkey .= $ws_name."  &lt;----  ".$sw_name.", <BR>" if($status eq 0);
-				}
-				if($status){
-					$this->create_vendor_object( $ws_user_dn, 'osssoftware', "$sw_name", "installation_scheduled");
-					cmd_pipe("chmod -R 777 /srv/itool/swrepository/$sw_name/");
-					insert_host_to_wpkghostsxml($ws_name);
-					if( !-e "/srv/itool/swrepository/logs/$ws_name/" ){
-						cmd_pipe("mkdir /srv/itool/swrepository/logs/$ws_name/");
-					}       
-				}
-			}
-		}
+	my $softwares = $this->get_config_values( $hw_dn, 'SWPackage', 'ARRAY' );
+	my @sw_name_list;
+	@sw_name_list = @{$softwares} if( ref($softwares) eq 'ARRAY');
+	#print Dumper(@sw_name_list);
+
+	my $result;
+	if(ref($softwares) eq 'ARRAY' ){
+		$result = $this->software_install_cmd(\@ws_dns, \@sw_name_list, $sw_installing_now);
 	}
+	#print Dumper($result);
 
+	my $msg = $this->createSwInstallationStatusTable($result);
+	#print Dumper($msg);
+	return $msg;
+}
+
+sub createSwInstallationStatusTable
+{
+	my $this   = shift;
+	my $result = shift;
 	my @ret;
-	if( $selected_software ){
-		push @ret, { NOTICE => main::__('selected_computer: ').$selected_computer."<BR>".main::__('selected_software: ').$selected_software };
+
+	# Selected pc's and softwares
+	push @ret, { NOTICE => main::__('selected_computer: ')." ".$result->{selected_computer}."<BR>".main::__('selected_software: ')." ".$result->{selected_software} };
+
+	# Missing sw requiremente
+	push @ret, { ERROR  => main::__('The following requirement packages are missing:')." <B>".$result->{missing_sw_list}."</B>" } if($result->{missing_sw_list});
+
+	# Install cmd 
+	my $inst_ok  = '';
+	my $inst_nok = '';
+	foreach my $pc (sort keys %{$result->{installation_scheduled}} ){
+		foreach my $sw (sort keys %{$result->{installation_scheduled}->{$pc}} ){
+			if( $result->{installation_scheduled}->{$pc} ){
+				$inst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+			}else{
+				$inst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+			}
+		}
 	}
-	if($no_prodkey){
-		push @ret, { ERROR => main::__('The command can not be executable successfully the following PCs, because there is no license key:')."<BR>".$no_prodkey };
+	push @ret, { NOTICE => main::__('Executable successfully install command in the following PCs:')."<BR>".$inst_ok } if($inst_ok);
+	push @ret, { ERROR  => main::__('Install command can not be executable successfully the following PCs, because there is no license key or have other problem:')."<BR>".$inst_nok } if($inst_nok);
+
+	# Deinstall cmd
+	my $deinst_ok  = '';
+	my $deinst_nok = '';
+	foreach my $pc (sort keys %{$result->{deinstallation_scheduled}} ){
+		foreach my $sw (sort keys %{$result->{deinstallation_scheduled}->{$pc}} ){
+			if( $result->{deinstallation_scheduled}->{$pc} ){
+				$deinst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+			}else{
+				$deinst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+			}
+		}
 	}
+	push @ret, { NOTICE => main::__('Executable successfully deinstall command in the following PCs:')."<BR>".$deinst_ok } if($deinst_ok);
+	push @ret, { ERROR => main::__('Deinstall command can not be executable successfully the following PCs, because there is not installed:')."<BR>".$deinst_nok } if($deinst_nok);
+
+	# Exists status
+	my $exist = '';
+        foreach my $pc (sort keys %{$result->{exists_status}} ){
+                foreach my $sw (sort keys %{$result->{exists_status}->{$pc}} ){
+			my $status = $result->{exists_status}->{$pc}->{$sw};
+                        $exist .= $pc."  &lt;----  ".$sw."  <B>(".main::__($status).")</B>, <BR>";
+                }
+        }
+        push @ret, { NOTICE => main::__('On the following PCs have the following command to be implemented:')."<BR>".$exist } if($exist);
+
 	return \@ret;
 }
 
