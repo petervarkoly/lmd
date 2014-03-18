@@ -65,6 +65,7 @@ sub getCapabilities
                 { variable     => [ "susedeliverytofolder",     [ type => "boolean" ] ] },
                 { variable     => [ "susedeliverytomember",     [ type => "boolean" ] ] },
 		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
+		{ variable     => [ "cloud_access",             [ type => "boolean" ] ] },
                 { variable     => [ "fquota",                   [ type => "string", label => "fquota", backlabel => "MB" ] ] },
                 { variable     => [ "quota",                    [ type => "string", label => "quota", backlabel => "MB" ] ] },
 		{ variable     => [ "l", [ type => "boolean"]]},
@@ -233,7 +234,9 @@ sub edit
                 }
         }
 	my $webdav_access_value = $this->get_vendor_object($dn,'EXTIS','WebDavAccess') ;
+	my $cloud_access_value  = $this->get_vendor_object($dn,'EXTIS','CloudAccess') ;
 	push @ret, { webdav_access => "$webdav_access_value->[0]" };
+	push @ret, { cloud_access  => "$cloud_access_value->[0]" } if( -e "/etc/sysconfig/OSS_CLOUD" );
         push @ret, { dn           => $dn };
         push @ret, { action       => "cancel" };
         push @ret, { action       => "newMember" };
