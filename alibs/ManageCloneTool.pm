@@ -727,7 +727,7 @@ sub createSwInstallationStatusTable
 	my $inst_nok = '';
 	foreach my $pc (sort keys %{$result->{installation_scheduled}} ){
 		foreach my $sw (sort keys %{$result->{installation_scheduled}->{$pc}} ){
-			if( $result->{installation_scheduled}->{$pc} ){
+			if( $result->{installation_scheduled}->{$pc}->{$sw} ){
 				$inst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
 			}else{
 				$inst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
@@ -742,7 +742,7 @@ sub createSwInstallationStatusTable
 	my $deinst_nok = '';
 	foreach my $pc (sort keys %{$result->{deinstallation_scheduled}} ){
 		foreach my $sw (sort keys %{$result->{deinstallation_scheduled}->{$pc}} ){
-			if( $result->{deinstallation_scheduled}->{$pc} ){
+			if( $result->{deinstallation_scheduled}->{$pc}->{$sw} ){
 				$deinst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
 			}else{
 				$deinst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
