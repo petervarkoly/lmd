@@ -201,8 +201,9 @@ sub editHW
 	}
 	elsif( $WSType eq 'MobileDevice' )
 	{
-		$VALUES{MDM_OS}     = "" if( ! defined $VALUES{MDM_OS} );
-		$VALUES{MDM_Policy} = "" if( ! defined $VALUES{MDM_Policy} );
+		$VALUES{MDM_OS}        = "" if( ! defined $VALUES{MDM_OS} );
+		$VALUES{MDM_Policy}    = "" if( ! defined $VALUES{MDM_Policy} );
+		$VALUES{MDM_Ownership} = "" if( ! defined $VALUES{MDM_Ownership} );
 	}
 	$VALUES{WSType} = [ 'FatClient', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---', $WSType ];
         if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" ) {
@@ -214,6 +215,11 @@ sub editHW
 		if( $value eq 'WSType' )
 		{
 		        push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => $VALUES{$value}, attributes=> [ type => 'popup' ] } ] };
+		}
+		elsif( $value eq 'MDM_Ownership' ) {
+			my @VAL = ('COD','BYOD','UNKNOWN');
+			push @VAL, ('---DEFAULTS---',$VALUES{MDM_Ownership}) if $VALUES{MDM_Ownership} ne "";
+			push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => \@VAL, attributes=> [ type => 'popup' ] } ] };
 		}
 		elsif( $value eq 'MDM_OS' ) {
 			my @VAL = ('IOS','ANDROID');

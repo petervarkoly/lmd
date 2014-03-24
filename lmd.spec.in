@@ -21,7 +21,18 @@ BuildRequires: java-1_6_0-ibm
 %else
 BuildRequires: java
 %endif
-Requires:     filesystem mysql-client mysql perl perl-DBI perl-IO-Socket-SSL perl-XML-Parser perl-XML-Writer openschool-base wol php-gd perl-Crypt-OpenSSL-RSA
+Requires:     filesystem
+Requires:	mysql-client
+Requires:	mysql
+Requires:	perl
+Requires:	perl-DBI
+Requires:	perl-IO-Socket-SSL
+Requires:	perl-XML-Parser
+Requires:	perl-XML-Writer
+Requires:	openschool-base
+Requires:	wol
+Requires:	php-gd
+Requires:	perl-Crypt-OpenSSL-RSA
 PreReq:       openschool-base %insserv_prereq
 PreReq:       %fillup_prereq
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build

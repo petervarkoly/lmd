@@ -1339,6 +1339,23 @@ sub selectWlanUser
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $OS    = $reply->{OS} || $this->get_computer_config_value('MDM_OS',$reply->{hwconfig});
+	my $own   = $reply->{owndership} || $this->get_computer_config_value('MDM_Ownership',$reply->{hwconfig});
+	my $pol   = $reply->{policy} || $this->get_computer_config_value('MDM_Policy',$reply->{hwconfig});
+	my @policies = (['0','No']);
+        if(  -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
+        {
+           push    @INC,"/usr/share/lmd/helper/";
+           require OSSMDM;
+           my $mdm = new OSSMDM;
+           foreach my $p ( @{$mdm->get_policies()} ) {
+               if( defined $p->{published}->{name} ) {
+                   push @policies, [ $p->{published}->{uuid} , $p->{published}->{name} ];
+               }
+           }
+	   $pol = 0 if(! defined $pol);
+           push @policies, ('---DEFAULTS---',$pol);
+        }
 	if( $reply->{FILTERED} )
 	{
 		my $name  = $reply->{cn} || '*';
@@ -1351,15 +1368,17 @@ sub selectWlanUser
         	{
                 	push @users , [ $dn, $user->{$dn}->{uid}->[0].' '.$user->{$dn}->{cn}->[0].' ('.$user->{$dn}->{description}->[0].')' ];
         	}
-		my @ret = ({ subtitle    => 'Select the User for this WLAN Device!' } );
-		push @ret, { name => "users", value => \@users, attributes => [ type  => 'list',size=>"10", multiple=>"true" ] };
+		my @ret = ({ label => 'Select the User for this WLAN Device!' } );
+		push @ret, { name  => "users", value => \@users, attributes => [ type  => 'list',size=>"10", multiple=>"true" ] };
 		#TODO SELECT IT FROM SCHOOLCONFIG
 		if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
 		{
+		   
 		   push @ret, { label => "Set MDM Parameter" };
 		   push @ret, { mdm => $reply->{mdm} || 0 };
-		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---','IOS' ] };
-		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,'COD'] };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
+		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
 		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'searchAgain' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
@@ -1369,7 +1388,7 @@ sub selectWlanUser
 	else
 	{
 		my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search();
-		my @ret = ({ subtitle    => 'Search User' } );
+		my @ret = ({ label    => 'Search User' } );
 		push @ret, { cn          => '*' };
 		push @ret, { role        => $roles};
 		push @ret, { class       => $classes };
@@ -1379,8 +1398,9 @@ sub selectWlanUser
 		{
 		   push @ret, { label => "Set MDM Parameter" };
 		   push @ret, { mdm => $reply->{mdm} || 0 };
-		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---','IOS' ] };
-		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,'COD'] };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
+		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
 		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'search' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
@@ -1416,7 +1436,9 @@ sub setWlanUser
 	    #TODO IF ownership is BYOD the user can make the installation.
 	    foreach my $hdn ( @{thaw(decode_base64(main::GetSessionDatas('HOSTDNs')))} ) {
 	    	my $cn = $this->get_attribute($hdn,'cn');
-	    	$mdm->add_enrollment(0,$cn,0,$reply->{OS},$reply->{ownership});
+		my $HW = uc($this->get_attribute($hdn,'dhcpHWAddress'));
+		$HW =~ s/ethernet //i;
+	    	$mdm->add_enrollment(0,$cn,$reply->{policy},$reply->{OS},$reply->{ownership},$HW);
 		$HOSTDN = $hdn;
 	    }
 	}
