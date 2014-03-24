@@ -235,7 +235,7 @@ sub editHW
 				my @policies = ();
 				foreach my $p ( @{$mdm->get_policies()} ) {
 				    if( defined $p->{published}->{name} ) {
-				    	push @policies, [ $p->{published}->{uuid} , $p->{published}->{name} ];
+				    	push @policies, [ $p->{uuid} , $p->{published}->{name} ];
 				    }
 				}
 				push @policies, ('---DEFAULTS---',$VALUES{MDM_Policy}) if $VALUES{MDM_Policy} ne "";

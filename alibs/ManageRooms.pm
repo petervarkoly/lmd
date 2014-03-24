@@ -1350,7 +1350,7 @@ sub selectWlanUser
            my $mdm = new OSSMDM;
            foreach my $p ( @{$mdm->get_policies()} ) {
                if( defined $p->{published}->{name} ) {
-                   push @policies, [ $p->{published}->{uuid} , $p->{published}->{name} ];
+                   push @policies, [ $p->{uuid} , $p->{published}->{name} ];
                }
            }
 	   $pol = 0 if(! defined $pol);
