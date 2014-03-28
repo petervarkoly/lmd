@@ -49,6 +49,7 @@ sub getCapabilities
                 { variable     => [ "susedeliverytofolder",     [ type => "boolean" ] ] },
                 { variable     => [ "susedeliverytomember",     [ type => "boolean" ] ] },
 		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
+		{ variable     => [ "cloud_access",             [ type => "boolean" ] ] },
                 { variable     => [ "grouptype",                [ type => "translatedpopup" ] ] }
         ];
 }
@@ -79,6 +80,7 @@ sub default
 	push @ret , { susedeliverytomember => 1 } ;
 	push @ret , { susedeliverytofolder => 0 } ;
 	push @ret , { webdav_access => 0 } ;
+	push @ret , { cloud_access  => 1 } if( -e "/etc/sysconfig/OSS_CLOUD" );
 	push @ret , { action => 'cancel' } ;
 	push @ret , { action => 'insert' } ;
 	return \@ret;
