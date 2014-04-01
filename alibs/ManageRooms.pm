@@ -191,6 +191,7 @@ sub getCapabilities
 		{ variable     => [ 'del_room',          [ type => 'action', label => 'delete' ]] },
 		{ variable     => [ 'set_free',          [ type => 'boolean' ]]  },
 		{ variable     => [ 'wlanaccess',        [ type => 'boolean' ]]},
+		{ variable     => [ 'mdm',               [ type => 'boolean' ]]},
 		{ variable     => [ 'master',            [ type => 'boolean' ]]},
 		{ variable     => [ 'delete',            [ type => 'boolean' ]]},
 		{ variable     => [ 'free_busy',         [ type => 'img',    style => 'margin-right:80px;' ]]},
@@ -202,6 +203,11 @@ sub getCapabilities
 		{ variable     => [ 'dn',                [ type => 'hidden' ]]  },
 		{ variable     => [ 'rdn',               [ type => 'hidden' ]]  },
 		{ variable     => [ 'roomtype',          [ type => 'hidden' ]]  },
+		{ variable     => [ 'OS',                [ type => 'popup' ]] },
+		{ variable     => [ 'ownership',         [ type => 'popup' ]] },
+		{ variable     => [ 'role',              [ type => "list", size=>"6",  multiple=>"true" ]] },
+		{ variable     => [ 'class',             [ type => "list", size=>"10", multiple=>"true" ]] },
+		{ variable     => [ 'workgroup',         [ type => "list", size=>"10", multiple=>"true" ]] },
 		{ variable     => [ 'freerooms',         [ type => 'popup' ]] },
 		{ variable     => [ 'rooms',             [ type => 'popup' ]] },
 		{ variable     => [ 'dhcpOptions',       [ type => 'popup' ]] },
@@ -1043,6 +1049,7 @@ sub addPC
 	my $result	= '';
 	my $host	= shift @hosts;
 	my $HOSTDN	= undef;
+	my @HOSTDNs	= ();
 	my $domain	= $this->{SYSCONFIG}->{SCHOOL_DOMAIN};
 
 	if( scalar( @HWS ) > 1 && $reply->{other_name} ne '' )
@@ -1097,6 +1104,12 @@ sub addPC
 	   }
 	}
 
+	#If the selected hw config is MDM then wlanaccess must be on too
+	if($this->get_computer_config_value('WSType',$reply->{hwconfig}) eq 'MobileDevice' ) {
+		$reply->{mdm}        = 1;
+		$reply->{wlanaccess} = 1;
+	}
+
 	#Now we do our work
 	foreach my $hw (@HWS)
 	{
@@ -1130,6 +1143,7 @@ sub addPC
 		}
 		my @dns = $this->add_host($name.'.'.$domain,$ip,$hw,$reply->{hwconfig},$reply->{master},$reply->{wlanaccess});
 		$HOSTDN = $dns[$#dns];
+		push @HOSTDNs, $HOSTDN;
 		if( ! $this->add( { uid          	   => $name,
 			     sn			   => $name.' Workstation-User',
 			     role         	   => 'workstations',
@@ -1164,9 +1178,10 @@ sub addPC
 	}
 	else
 	{
-		if( $reply->{wlaneccess} && scalar( @HWS ) == 1 )
+		if( $reply->{wlanaccess} )
 		{
-			$reply->{HOSTDN} = $HOSTDN;
+			my $freeze = encode_base64(freeze(\@HOSTDNs),"");
+			main::AddSessionDatas($freeze,'HOSTDNs');
 			$this->selectWlanUser($reply);
 		}
 		else
@@ -1319,13 +1334,31 @@ sub scanPCs
 	push @ret, { action    => 'cancel' };
 	return \@ret;
 }
+
 sub selectWlanUser
 {
 	my $this  = shift;
 	my $reply = shift;
+	my $OS    = $reply->{OS} || $this->get_computer_config_value('MDM_OS',$reply->{hwconfig});
+	my $own   = $reply->{owndership} || $this->get_computer_config_value('MDM_Ownership',$reply->{hwconfig});
+	my $pol   = $reply->{policy} || $this->get_computer_config_value('MDM_Policy',$reply->{hwconfig});
+	my @policies = (['0','No']);
+        if(  -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
+        {
+           push    @INC,"/usr/share/lmd/helper/";
+           require OSSMDM;
+           my $mdm = new OSSMDM;
+           foreach my $p ( @{$mdm->get_policies()} ) {
+               if( defined $p->{published}->{name} ) {
+                   push @policies, [ $p->{uuid} , $p->{published}->{name} ];
+               }
+           }
+	   $pol = 0 if(! defined $pol);
+           push @policies, ('---DEFAULTS---',$pol);
+        }
 	if( $reply->{FILTERED} )
 	{
-		my $name  = $reply->{name} || '*';
+		my $name  = $reply->{cn} || '*';
 		my @role  = split /\n/, $reply->{role}  || ();
 		my @group = split /\n/, $reply->{workgroup} || ();
 		my @class = split /\n/, $reply->{class} || ();
@@ -1335,26 +1368,43 @@ sub selectWlanUser
         	{
                 	push @users , [ $dn, $user->{$dn}->{uid}->[0].' '.$user->{$dn}->{cn}->[0].' ('.$user->{$dn}->{description}->[0].')' ];
         	}
-		my @ret = ({ subtitle    => 'Select the User for this WLAN Device!' } );
-		push @ret, { user => \@users }; 
+		my @ret = ({ label => 'Select the User for this WLAN Device!' } );
+		push @ret, { name  => "users", value => \@users, attributes => [ type  => 'list',size=>"10", multiple=>"true" ] };
+		#TODO SELECT IT FROM SCHOOLCONFIG
+		if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
+		{
+		   
+		   push @ret, { label => "Set MDM Parameter" };
+		   push @ret, { mdm => $reply->{mdm} || 0 };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
+		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
+		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'searchAgain' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
 		push @ret, { name => 'rightaction', value => "room",             attributes => [ label => 'cancel' ]  };
-		push @ret, { name => 'HOSTDN',      value => $reply->{HOSTDN},   attributes => [ type  => 'hidden' ] };
-		push @ret, { name => 'line',        value => $reply->{line},     attributes => [ type  => 'hidden' ] };
 		return \@ret;
 	}
 	else
 	{
 		my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search();
-		my @ret = ({ subtitle    => 'Search User' } );
-		push @ret, { name        => '*' };
+		my @ret = ({ label    => 'Search User' } );
+		push @ret, { cn          => '*' };
 		push @ret, { role        => $roles};
 		push @ret, { class       => $classes };
 		push @ret, { workgroup   => $workgroups };
-		push @ret, { name => 'rightaction', value => "selectWlanUser", attributes => [ label => 'search' ]  };
-		push @ret, { name => 'HOSTDN',      value => $reply->{HOSTDN},   attributes => [ type  => 'hidden' ] };
-		push @ret, { name => 'line',        value => $reply->{line},     attributes => [ type  => 'hidden' ] };
+		#TODO SELECT IT FROM SCHOOLCONFIG
+		if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
+		{
+		   push @ret, { label => "Set MDM Parameter" };
+		   push @ret, { mdm => $reply->{mdm} || 0 };
+		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
+		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
+		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
+		}
+		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'search' ]  };
+		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
+		push @ret, { name => 'rightaction', value => "room",             attributes => [ label => 'cancel' ]  };
 		push @ret, { name => 'FILTERED',    value => 1,                  attributes => [ type  => 'hidden' ] };
 		return \@ret;
 
@@ -1365,12 +1415,34 @@ sub setWlanUser
 {
 	my $this  = shift;
 	my $reply = shift;
-	my $HW    = uc($this->get_attribute($reply->{HOSTDN},'dhcpHWAddress'));
-	$HW =~ s/ethernet //i;
-        $HW =~ s/:/-/g;
-	$this->{LDAP}->modify($reply->{user}, delete => { rassAccess => 'no' } );
-	$this->{LDAP}->modify($reply->{user}, delete => { rassAccess => 'all' } );
-	$this->{LDAP}->modify($reply->{user}, add    => { rassAccess => $HW } );
+	my @users = split /\n/, $reply->{users} || ();
+	my $HOSTDN = '';
+	foreach my $udn ( @users ) {
+		$this->{LDAP}->modify($udn, delete => { rassAccess => 'no' } );
+		$this->{LDAP}->modify($udn, delete => { rassAccess => 'all' } );
+	        foreach my $hdn ( @{thaw(decode_base64(main::GetSessionDatas('HOSTDNs')))} ) {
+			my $HW    = uc($this->get_attribute($hdn,'dhcpHWAddress'));
+			$HOSTDN = $hdn;
+			$HW =~ s/ethernet //i;
+        		$HW =~ s/:/-/g;
+			$this->{LDAP}->modify($udn, add    => { rassAccess => $HW } );
+		}
+	}
+	if( $reply->{mdm} )
+	{
+	    push    @INC,"/usr/share/lmd/helper/";
+	    require OSSMDM;
+	    my $mdm = new OSSMDM;
+	    #TODO IF ownership is BYOD the user can make the installation.
+	    foreach my $hdn ( @{thaw(decode_base64(main::GetSessionDatas('HOSTDNs')))} ) {
+	    	my $cn = $this->get_attribute($hdn,'cn');
+		my $HW = uc($this->get_attribute($hdn,'dhcpHWAddress'));
+		$HW =~ s/ethernet //i;
+	    	$mdm->add_enrollment(0,$cn,$reply->{policy},$reply->{OS},$reply->{ownership},$HW);
+		$HOSTDN = $hdn;
+	    }
+	}
+	$reply->{rdn} = get_parent_dn($HOSTDN);
 	$this->room($reply);
 }
 

@@ -849,6 +849,7 @@ sub EndTag
 	else
 	{
 	    $ACTION = 'default' if( $ACTION eq 'cancel' );
+	    $ACTION = 'default' if( $ACTION eq 'back' && ! defined $INTERFACE->{$APPLICATION}->{$ACTION} );
 
 	    print "Now we start executing \n".Dumper($REQUEST) if $DEBUG;
 	    print "Now we start executing \n".$SHREQUEST if $DEBUG;

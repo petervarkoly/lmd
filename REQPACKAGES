@@ -5,3 +5,4 @@ perl-DBI
 perl-IO-Socket-SSL
 perl-XML-Parser
 perl-XML-Writer
+perl-Crypt-SSLeay 

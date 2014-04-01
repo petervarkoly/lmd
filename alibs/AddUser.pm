@@ -29,9 +29,7 @@ sub interface
 	return [
 		"getCapabilities",
 		"default",
-		"insert",
-		"shortAttributes",
-		"longAttributes"
+		"insert"
 	];
 
 }
@@ -60,7 +58,8 @@ sub getCapabilities
                 { variable     => [ "quota",                    [ type => "string", label => "quota", backlabel => "MB" ] ] },
 		{ variable     => [ "mailenabled",              [ type => "translatedpopup",  ] ] },
 		{ variable     => [ "oxtimezone",		[ type => "popup" ] ] },
-		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] }
+		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
+		{ variable     => [ "cloud_access",             [ type => "boolean" ] ] }
 	];
 }
 
@@ -112,65 +111,11 @@ sub default
 	push @ret, { mailenabled => \@mailEnabled };
 	push @ret, { admin       => $admin };
 	push @ret, { webdav_access => 0 };
+	push @ret, { cloud_access  => 1 } if( -e "/etc/sysconfig/OSS_CLOUD" );
 	push @ret, { rasaccess  => $this->get_wlan_workstations } if ( $this->{RADIUS} );
 	push @ret, { action   => "cancel" };
 	push @ret, { action   => "insert" };
 	return \@ret;
-}
-
-sub shortAttributes
-{
-	my $this   = shift;
-	my $reply  = shift;
-	$this->default($reply);
-}
-
-sub longAttributes
-{
-	my $this   = shift;
-	my $reply  = shift;
-	my $uid    	= $reply->{uid} || ''; 
-	my $sn          = $reply->{sn} || ''; 
-	my $givenname   = $reply->{givenname} || ''; 
-	my $userpassword= $reply->{userpassword} || ''; 
-	my $quota       = $reply->{quota} || ''; 
-	my $fquota	= $reply->{fquota} || ''; 
-	my $mustchange  = $reply->{mustchange} || 0;
-	my $admin	= $reply->{admin}      || 0;
-	my $alias       = $reply->{alias}      || 0;
-	my $birthday    = $reply->{birthday}   || '';
-	my @role	= ();
-	my @class       = ( ["all","all"] );
-        my ( $primaries, $classes, $workgroups ) = $this->get_school_groups_to_search();
-        foreach my $i ( @{$primaries} )
-        {
-            my $dn  = shift @{$i};
-            my $r   = $this->get_attribute($dn,'role');
-            next if ( $r eq 'workstations' );
-            push @role, $r;
-        }
-        push @role, [ '---DEFAULTS---' ], [ 'students' ];
-	push @class, @{$classes};
-
-	return [
-		{ uid	      => $uid },
-		{ sn	      => $sn },
-		{ givenname   => $givenname },
-		{ userpassword=> $userpassword },
-		{ mustchange  => $mustchange },
-		{ birthday    => $birthday },
-		{ role        => \@role },
-		{ class       => \@class },
-		{ group       => $workgroups },
-		{ quota	      => $quota },
-		{ fquota      => $fquota },
-		{ preferredlanguage => getLanguages(main::GetSessionValue('lang')) },
-		{ admin       => $admin },
-		{ webdav_access => 0 },
-		{ oxtimezone  => getTimeZones() },
-		{ action   => "shortAttributes" },
-		{ action   => "insert" }
-	];
 }
 
 sub insert

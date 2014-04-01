@@ -75,43 +75,44 @@ sub getCapabilities
 		{ allowedRole  => $allowedRole },
 		{ order        => $order },
 		{ variable     => [ "dn", 			[ type => "hidden" ] ] },
-		{ variable     => [ "users",			[ type => "list", size=>"20", multiple=>"true" ] ] },
-		{ variable     => [ "class",			[ type => "list", size=>"10", multiple=>"true" ] ] },
-		{ variable     => [ "workgroup",		[ type => "list", size=>"10", multiple=>"true" ] ] },
-		{ variable     => [ "role", 			[ type => "list", size=>"6",  multiple=>"true" ] ] },
-		{ variable     => [ "rasaccess",                [ type => "list", size=>"5",  multiple=>"true" ] ] },
+		{ variable     => [ "susedeliverytofolder",     [ type => "boolean" ] ] },
+                { variable     => [ "admin",                    [ type => "boolean" ] ] },
+                { variable     => [ "alias",                    [ type => "boolean" ] ] },
+                { variable     => [ "mustchange",               [ type => "boolean" ] ] },
+		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
+		{ variable     => [ "cloud_access",             [ type => "boolean" ] ] },
+                { variable     => [ "birthday",                 [ type => "date",   ] ] },
 		{ variable     => [ "uid", 			[ type => "label"  ] ] },
 		{ variable     => [ "label1", 			[ type => "label", label=>'', ] ] },
 		{ variable     => [ "label2", 			[ type => "label", label=>'' ] ] },
 		{ variable     => [ "sn", 			[ type => "label"  ] ] },
 		{ variable     => [ "givenname", 		[ type => "label"  ] ] },
+		{ variable     => [ "users",			[ type => "list", size=>"20", multiple=>"true" ] ] },
+		{ variable     => [ "class",			[ type => "list", size=>"10", multiple=>"true" ] ] },
+		{ variable     => [ "workgroup",		[ type => "list", size=>"10", multiple=>"true" ] ] },
+		{ variable     => [ "role", 			[ type => "list", size=>"6",  multiple=>"true" ] ] },
+		{ variable     => [ "rasaccess",                [ type => "list", size=>"5",  multiple=>"true" ] ] },
+                { variable     => [ "newgroup",			[ type => "list", size=>"5", multiple=>"true" ] ] },
+                { variable     => [ "group",			[ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
+                { variable     => [ "susemailforwardaddress",   [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
+                { variable     => [ "susemailacceptaddress",    [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
+		{ variable     => [ "userpassword",             [ type => "password" ] ] },
+                { variable     => [ "oxtimezone",               [ type => "popup" ] ] },
+                { variable     => [ "mail",                     [ type => "popup" ] ] },
+                { variable     => [ "domains",                  [ type => "popup",  label=>'' ] ] },
+                { variable     => [ "preferredlanguage",        [ type => "popup" ] ] },
 		{ variable     => [ "name", 			[ type => "string"  ] ] },
+                { variable     => [ "newsusemailacceptaddress", [ type => "string", label=>'' ] ] },
+                { variable     => [ "fquota",                   [ type => "string", label => "fquota",     backlabel => "MB" ] ] },
+                { variable     => [ "quota",                    [ type => "string", label => "quota",      backlabel => "MB" ] ] },
+                { variable     => [ "fquotaused",               [ type => "string", label => "fquotaused", backlabel => "MB" ] ] },
+                { variable     => [ "quotaused",                [ type => "string", label => "quotaused",  backlabel => "MB" ] ] },
                 { variable     => [ "mailenabled",              [ type => "translatedpopup",  ] ] },
                 { variable     => [ "logindisabled",            [ type => "translatedpopup",  ] ] },
                 { variable     => [ "internetdisabled",         [ type => "translatedpopup",  ] ] },
                 { variable     => [ "oxenabled",                [ type => "translatedpopup",  ] ] },
 		{ variable     => [ "sambauserworkstations",    [ type => "translatedpopup",  ] ] },
-		{ variable     => [ "maynotchangepassword",     [ type => "translatedpopup" ] ] },
-		{ variable     => [ "susedeliverytofolder",     [ type => "boolean" ] ] },
-                { variable     => [ "admin",                    [ type => "boolean" ] ] },
-                { variable     => [ "alias",                    [ type => "boolean" ] ] },
-                { variable     => [ "mustchange",               [ type => "boolean" ] ] },
-                { variable     => [ "birthday",                 [ type => "date",   ] ] },
-                { variable     => [ "mail",                     [ type => "popup" ] ] },
-                { variable     => [ "domains",                  [ type => "popup",  label=>'' ] ] },
-                { variable     => [ "newsusemailacceptaddress", [ type => "string", label=>'' ] ] },
-                { variable     => [ "preferredlanguage",        [ type => "popup" ] ] },
-                { variable     => [ "fquota",                   [ type => "string", label => "fquota", backlabel => "MB" ] ] },
-                { variable     => [ "quota",                    [ type => "string", label => "quota", backlabel => "MB" ] ] },
-                { variable     => [ "fquotaused",               [ type => "string", label => "fquotaused", backlabel => "MB" ] ] },
-                { variable     => [ "quotaused",                [ type => "string", label => "quotaused", backlabel => "MB" ] ] },
-                { variable     => [ "oxtimezone",               [ type => "popup" ] ] },
-                { variable     => [ "newgroup",			[ type => "list", size=>"5", multiple=>"true" ] ] },
-                { variable     => [ "group",			[ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
-                { variable     => [ "susemailforwardaddress",   [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true" ] ] },
-                { variable     => [ "susemailacceptaddress",    [ type => "list", help => 'Select Entry to delete', size=>"5", multiple=>"true"] ] },
-		{ variable     => [ "webdav_access",            [ type => "boolean" ] ] },
-		{ variable     => [ "userpassword",             [ type => "password" ] ] }
+		{ variable     => [ "maynotchangepassword",     [ type => "translatedpopup" ] ] }
 	];
 }
 
@@ -463,9 +464,11 @@ sub editUser
 		}
 	}
 	my $webdav_access_value = $this->get_vendor_object($dn,'EXTIS','WebDavAccess');
-	push @ret, { webdav_access => "$webdav_access_value->[0]" };
-	push @ret, { dn           => $dn };
-	push @ret, { action       => "cancel" };
+	my $cloud_access_value  = $this->get_vendor_object($dn,'EXTIS','CloudAccess') ;
+	push @ret, { webdav_access => $webdav_access_value->[0] };
+	push @ret, { cloud_access  => $cloud_access_value->[0]  } if( -e "/etc/sysconfig/OSS_CLOUD" );
+	push @ret, { dn            => $dn };
+	push @ret, { action        => "cancel" };
 	push @ret, { name => 'action', value => "setChanges", attributes => [ label => 'apply' ]  };
 	return \@ret;
 }

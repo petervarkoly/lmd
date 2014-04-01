@@ -63,6 +63,7 @@ sub getCapabilities
 		{ variable     => [ 'dn',           [ type => 'hidden'  ] ]},
 		{ variable     => [ 'hw',           [ type => 'hidden'  ] ]},
 		{ variable     => [ 'description',  [ type => 'label'   ] ]},
+		{ variable     => [ 'WSType',       [ type => 'popup'   ] ]},
 		{ variable     => [ 'editHW',       [ type => 'action'  ] ]},
 		{ variable     => [ 'startImaging', [ type => 'action'  ] ]},
 		{ variable     => [ 'realy_delete_HW',[ type => 'action'  ] ]},
@@ -82,7 +83,7 @@ sub default
 {
         my $this        = shift;
         my $reply       = shift;
-        my @lines       = ('HW');
+        my @lines       = ('HW', { head => [ "editHW", "startImaging", "realy_delete_HW" ] } );
 
 	my %SHW = ('SHW');
 	foreach my $HW ( @{$this->get_HW_configurations(0)}  )
@@ -92,7 +93,13 @@ sub default
 
 	foreach my $HW_desc (sort keys %{$SHW{SHW}}  )
 	{
-		push @lines, { line => [ $SHW{SHW}->{$HW_desc}, { editHW => $HW_desc }, { startImaging => main::__('Start Imaging') }, { realy_delete_HW => main::__('delete')} ] };
+		if( $this->get_computer_config_value('WSType',$SHW{SHW}->{$HW_desc}) eq 'MobileDevice' ) {
+			push @lines, { line => [ $SHW{SHW}->{$HW_desc}, { editHW => $HW_desc }, { type => "" }, { realy_delete_HW => main::__('delete')} ] };
+		}
+		else
+		{
+			push @lines, { line => [ $SHW{SHW}->{$HW_desc}, { editHW => $HW_desc }, { startImaging => main::__('Start Imaging') }, { realy_delete_HW => main::__('delete')} ] };
+		}
 	}
 
 #	foreach my $HW ( @{$this->get_HW_configurations(0)}  )
@@ -116,9 +123,14 @@ sub default
 
 sub addNewHW
 {
+	my @WSType = (  'FatClient', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---',  'FatClient' );
+	if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" ) {
+	   @WSType = (  'FatClient', 'MobileDevice', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---',  'FatClient' );
+	}
 	return [
 		{ subtitle => 'Add New Computer Type' },
 		{ name     => 'description', value => '' , attributes => [ type => 'string' ] },
+		{ WSType   => \@WSType },
 		{ action   => 'cancel' },
 		{ action   => 'insert' }
 	];
@@ -128,7 +140,7 @@ sub insert
 {
         my $this        = shift;
         my $reply       = shift;
-	my $key		= $this->add_new_HW($reply->{description});
+	my $key		= $this->add_new_HW($reply->{description},$reply->{WSType});
 	if( ! $key )
 	{
 	   return {
@@ -151,12 +163,11 @@ sub editHW
 	my $result = $this->get_attributes( 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE},
 					    ['configurationvalue','description']
 					  );
-	push @r, { name => 'description',
-		  value => $result->{'description'}->[0],
-	     attributes => [ type => 'string' ] };
+	push @r, { name       => 'description',
+		   value      => $result->{'description'}->[0],
+	           attributes => [ type => 'string' ] };
 
 
-	push @r, { name => 'sw_autoinstall', value => main::__('details'), attributes => [ type => 'action' ] };
 
 
 	if( -e "/srv/itool/images/$hw/" ){
@@ -183,27 +194,64 @@ sub editHW
 	    next if( $k eq 'TYPE' );
 	    $VALUES{$k}=$v;
 	}
-	$VALUES{WSType}     = 'FatClient' if( !defined $VALUES{WSType} );
-	$VALUES{WSType} = [ 'FatClient', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer',
-			    '---DEFAULTS---', $VALUES{WSType} ];
-	$VALUES{Warranty} ='' if ( !defined $VALUES{Warranty} );
-	foreach ( sort keys %VALUES )
+	$VALUES{WSType} = 'FatClient' if( !defined $VALUES{WSType} );
+	my $WSType      = $VALUES{WSType};
+	if( $WSType eq 'FatClient' ) {
+		push @r, { name => 'sw_autoinstall', value => main::__('details'), attributes => [ type => 'action' ] };
+	}
+	elsif( $WSType eq 'MobileDevice' )
 	{
-		if( $_ eq 'WSType' )
+		$VALUES{MDM_OS}        = "" if( ! defined $VALUES{MDM_OS} );
+		$VALUES{MDM_Policy}    = "" if( ! defined $VALUES{MDM_Policy} );
+		$VALUES{MDM_Ownership} = "" if( ! defined $VALUES{MDM_Ownership} );
+	}
+	$VALUES{WSType} = [ 'FatClient', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---', $WSType ];
+        if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" ) {
+           $VALUES{WSType} = [ 'FatClient', 'MobileDevice', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---',  $WSType ];
+        }
+	$VALUES{Warranty} ='' if ( !defined $VALUES{Warranty} );
+	foreach my $value ( sort keys %VALUES )
+	{
+		if( $value eq 'WSType' )
 		{
-			push @table , { line => [ $_ , { name   => $_ } , 
-					       { name   =>'val', value => $VALUES{$_}, attributes=> [ type => 'popup' ] } ] };
+		        push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => $VALUES{$value}, attributes=> [ type => 'popup' ] } ] };
 		}
-		elsif( $_ eq 'Warranty' )
-		{
-			push @table , { line => [ $_ , { name   => $_ } , 
-					       { name   =>'val', value => $VALUES{$_}, attributes=> [ type => 'date' ] } ] };
+		elsif( $value eq 'MDM_Ownership' ) {
+			my @VAL = ('COD','BYOD','UNKNOWN');
+			push @VAL, ('---DEFAULTS---',$VALUES{MDM_Ownership}) if $VALUES{MDM_Ownership} ne "";
+			push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => \@VAL, attributes=> [ type => 'popup' ] } ] };
 		}
-		elsif( $_ eq 'SWPackage' or $_ eq 'SWPackageCategory' ){
-		}else
+		elsif( $value eq 'MDM_OS' ) {
+			my @VAL = ('IOS','ANDROID');
+			push @VAL, ('---DEFAULTS---',$VALUES{MDM_OS}) if $VALUES{MDM_OS} ne "";
+			push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => \@VAL, attributes=> [ type => 'popup' ] } ] };
+		}
+		elsif( $value eq 'MDM_Policy' ) {
+			if( $WSType eq 'MobileDevice' && -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
+			{
+				push    @INC,"/usr/share/lmd/helper/";
+				require OSSMDM;
+				my $mdm = new OSSMDM;
+				my @policies = ();
+				foreach my $p ( @{$mdm->get_policies()} ) {
+				    if( defined $p->{published}->{name} ) {
+				    	push @policies, [ $p->{uuid} , $p->{published}->{name} ];
+				    }
+				}
+				push @policies, ('---DEFAULTS---',$VALUES{MDM_Policy}) if $VALUES{MDM_Policy} ne "";
+				push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => \@policies, attributes=> [ type => 'popup' ] } ] };
+			}
+		}
+		elsif( $value eq 'Warranty' )
 		{
-			push @table , { line => [ $_ , { notranslate_name   => $_ } , 
-					       { val    => $VALUES{$_} }, { delete => 0 } ] };
+			push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => $VALUES{$value}, attributes=> [ type => 'date' ] } ] };
+		}
+		elsif( $value eq 'SWPackage' or $value eq 'SWPackageCategory' ){
+			next;
+		}
+		else
+		{
+			push @table , { line => [ $value , { notranslate_name   => $value } , { val    => $VALUES{$value} }, { delete => 0 } ] };
 		}
 	}
 	push @r, { table  => \@table };
