@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
+# Copyright (c) 2014 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 
 interface()
 {
@@ -11,24 +11,23 @@ getCapabilities()
 echo 'title Release Update of OSS
 allowedRole root
 allowedRole sysadmins
-disabled 1
 category System
 order 10000'
 }
 
 default()
 {
-        OSSV=$( rpm -q --qf %{VERSION} openschool-base )
+        SLESP3=$( zypper lr | grep SLES11-SP3 )
 
         if [ -e /var/adm/oss/migration ]
         then
                 echo "label Die Migration läuft."
                 echo "label The migration is processing."
                 return
-        elif [ "$OSSV" != "3.3.0" ]
+        elif [ -z "$SLESP3" ]
         then
-                echo "label Jetzt können Sie das Update von OSS 3.2 auf OSS 3.3 starten."
-                echo "label Now we can start the update from OSS 3.2 to OSS 3.3"
+                echo "label Jetzt können Sie das Update von SLES11 SP2 auf SLES11 SP3 starten."
+                echo "label Now we can start the update from SLES11 SP2 to SLES11 SP3"
                 echo "action cancel"
                 echo "action start"
                 return
@@ -36,13 +35,16 @@ default()
         then
                 echo "label Ihr System is auf dem aktuellen Stand. Die Migration wurde beendet.<br>Bitte starten Sie den Server neu!"
                 echo "label Your system is actuall. The migration process has been comleted.<br>Please restart your server!"
+	else
+                echo "label Ihr System is auf dem aktuellen Stand. Die Migration wurde beendet.<br>"
+                echo "label Your system is actuall. The migration process has been comleted.<br>"
         fi
 
 }
 
 start()
 {
-        at -f /usr/share/oss/tools/migrate-oss.sh now
+        at -f /usr/share/lmd/tools/migrate-oss.sh now
 
 	echo "label Die Migration wurde gestartet."
 	echo "label The migration was started."

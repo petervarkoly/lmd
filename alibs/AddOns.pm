@@ -43,7 +43,6 @@ sub getCapabilities
 		 { allowedRole  => 'sysadmins' },
 		 { category     => 'System' },
 		 { order        => 15 },
-		 { disabled     => 1 },
 		 { variable     => [ "name",        [ type => "label"] ] },
 		 { variable     => [ "install",     [ type => "action", label=>"Action" ] ] },
 		 { variable     => [ "Description", [ type => "label"] ] },
@@ -86,24 +85,34 @@ sub default
 					TYPE    => 'ERROR',
 					MESSAGE => 'You need an internet connection to retrieve the list of available AddOn Software. Please set up the internet connection and try again to open this page'
 				}
-		} else {
-			if (! -e $addonsfile) {system("cp $tempfile $addonsfile");}
-			else {
-				my $newxmlData = $newxml->XMLin($tempfile);
-				my $newVersion = $newxmlData->{version};
-				my $actxmlData = $actxml->XMLin($addonsfile);
-				my $actVersion = $actxmlData->{version};
-				my $major = ((int($newVersion) - int($actVersion)) >= 1);
-				if ($major) {
-					return {
-						TYPE    => 'ERROR',
-						MESSAGE => 'The AddOn List has a newer format and can not be handled by this module. Please install the updates for the Open School Server Administration Application'
-					}
-				} else {
-					if ($newVersion >= $actVersion) {system("cp $tempfile $addonsfile");}
+		}
+		my $type = `file -b $tempfile`; chomp $type;
+		if( $type =~ /^text\/html;/ )
+		{
+		    my $text = `grep '<h2>.*</h2>' $tempfile`;
+
+		    return {
+		    	TYPE    => 'NOTICE',
+		    	MESSAGE => $text
+		    }
+		}
+		if (! -e $addonsfile) {system("cp $tempfile $addonsfile");}
+		else {
+			my $newxmlData = $newxml->XMLin($tempfile);
+			my $newVersion = $newxmlData->{version};
+			my $actxmlData = $actxml->XMLin($addonsfile);
+			my $actVersion = $actxmlData->{version};
+			my $major = ((int($newVersion) - int($actVersion)) >= 1);
+			if ($major) {
+				return {
+					TYPE    => 'ERROR',
+					MESSAGE => 'The AddOn List has a newer format and can not be handled by this module. Please install the updates for the Open School Server Administration Application'
 				}
+			} else {
+				if ($newVersion >= $actVersion) {system("cp $tempfile $addonsfile");}
 			}
 		}
+		
 	}
 
 	my $xml = new XML::Simple;
