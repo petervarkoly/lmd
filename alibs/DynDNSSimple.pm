@@ -79,12 +79,14 @@ sub interface
 	return [
 		"getCapabilities",
 		"default",
+		"dynDNS",
 		"save_global_conf",
 		"new_host",
 		"edit_host",
 		"save_host",
 		"delete_host",
 		"my_cancel",
+		"cephalix"
 	];
 
 }
@@ -98,19 +100,47 @@ sub getCapabilities
 		{ allowedRole  => 'sysadmins' },
 		{ category     => 'Network' },
 		{ order        => 90 },
-		{ variable     => [ "service_name",             [ type => 'action'] ] },
-		{ variable     => [ "edit_service",             [ type => 'action'] ] },
-		{ variable     => [ "delete_service",           [ type => 'action'] ] },
-		{ variable     => [ "host_name",                [ type => 'label', style => 'width:300px;'] ] },
-		{ variable     => [ "ddns_services",            [ type => 'label'] ] },
+		{ variable     => [ "service_name",             [ type => 'action' ] ] },
+		{ variable     => [ "edit_service",             [ type => 'action' ] ] },
+		{ variable     => [ "delete_service",           [ type => 'action' ] ] },
 		{ variable     => [ "save_host",                [ type => 'action' ] ] },
 		{ variable     => [ "edit_host",                [ type => 'action' ] ] },
 		{ variable     => [ "delete_host",              [ type => 'action' ] ] },
 		{ variable     => [ "my_cancel",                [ type => 'action', label => 'cancel' ] ] },
+		{ variable     => [ "host_name",                [ type => 'label', style => 'width:300px;'] ] },
+		{ variable     => [ "ddns_services",            [ type => 'label'  ] ] },
+		{ variable     => [ "cephalixDomain",           [ type => 'popup'  ] ] },
 	];
 }
 
 sub default
+{
+	my $this  = shift;
+	my $reply = shift;
+	my @ret   = ();
+	my $CephalixHostname = '';
+	my $CephalixDomain   = 'chephalix.de';
+
+	#Check if cehpalix dynDNS are defined.
+	my $SCHOOL_REG_CODE   = $this->get_school_config('SCHOOL_REG_CODE');
+	my $tmp = `. /etc/profile.d/profile.sh; wget -O /dev/stdout -o /dev/null "http://repo.openschoolserver.net/cgi-bin/validate-regcode1.pl?regcode=$SCHOOL_REG_CODE&get=1"`;
+	$tmp =~  /<h1>CEPHALIX:(.*)::(.*)</;
+	if( $1 and $2 ) {
+	    $CephalixHostname = $1;
+	    $CephalixDomain   = $2;
+	}
+	if($reply->{warning}){
+		push @ret, { NOTICE => "$reply->{warning}" };
+	}
+	push @ret, { label => "Cephalix DynDNS Settings:" };
+	push @ret, { cephalixHostname => $CephalixHostname };
+	push @ret, { cephalixDomain   => [ 'cephalix.de','cephalix.eu','---DEFAULTS---',$CephalixDomain ] };
+	push @ret, { action => 'cephalix' };
+	push @ret, { action => 'dynDNS' };
+	return \@ret;
+}
+
+sub dynDNS
 {
 	my $this  = shift;
 	my $reply = shift;
@@ -162,6 +192,7 @@ sub default
 		}
 	}
 
+	push @ret, { action => 'cancel'};
 	push @ret, { action => 'save_global_conf'};
 	push @ret, { action => 'new_host'};
 
@@ -194,7 +225,7 @@ sub save_global_conf
 
 	$split_file->{ddclinet_conf_head} = $content_head;
 	$this->save_content_to_file($split_file);
-	return $this->default();
+	return $this->dynDNS();
 }
 
 sub new_host
@@ -281,7 +312,7 @@ sub save_host
 		return $this->edit_host($reply);
 	}else{
 		system('rm /etc/ddclient.conf.old');
-		return $this->default();
+		return $this->dynDNS();
 	}
 }
 
@@ -326,7 +357,7 @@ sub delete_host
 
 	$this->save_content_to_file($split_file);
 	system("/etc/init.d/ddclient restart");
-	return $this->default($reply);
+	return $this->dynDNS($reply);
 }
 
 #///////////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +479,7 @@ sub my_cancel
 		$this->save_content_to_file($split_file);
 	}
 
-        return $this->default();
+        return $this->dynDNS();
 }
 
 sub trim($)
@@ -457,6 +488,37 @@ sub trim($)
         $string =~ s/^\s+//;
         $string =~ s/\s+$//;
         return $string;
+}
+
+sub cephalix
+{
+	my $this  = shift;
+        my $reply = shift;
+	my @ret   = ();
+
+	#Check if cehpalix dynDNS are defined.
+	my $hostname = $reply->{cephalixHostname};
+	my $domain   = $reply->{cephalixDomain};
+	if( $hostname !~ /^[a-zA-Z][a-zA-Z0-9\-\.]+$/ )
+	{
+	    $reply->{warning} = "The provided hostname is invalid.";
+	    return $this->default($reply);
+	}
+	if( $domain !~ /^[a-zA-Z][a-zA-Z0-9\-\.]+$/ )
+	{
+	    $reply->{warning} = "The provided domain is invalid.";
+	    return $this->default($reply);
+	}
+	my $SCHOOL_REG_CODE   = $this->get_school_config('SCHOOL_REG_CODE');
+	my $tmp = `. /etc/profile.d/profile.sh; wget -O /dev/stdout -o /dev/null "http://repo.openschoolserver.net/cgi-bin/validate-regcode1.pl?regcode=$SCHOOL_REG_CODE&check=1&domain=$domain&hostname=$hostname"`;
+	if( $tmp =~ /<h2>(.*)<\/h2>/ )
+	{
+	    $reply->{warning} = $1;
+	    return $this->default($reply);
+	}
+	$this->delete_school_config('SCHOOL_DYNDNS_HOSTNAME');
+	$this->delete_school_config('SCHOOL_DYNDNS_DOMAIN');
+	return $this->default($reply);
 }
 
 1;
