@@ -1,4 +1,5 @@
 # DYN-DNS modul
+# Copyright (c) 2014 Peter Varkoly, Germany. All rights reserved.
 # Copyright (c) 2012 EXTIS GmbH, Germany.  All rights reserved.
 BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 
@@ -7,7 +8,6 @@ package DynDNSSimple;
 use strict;
 use oss_base;
 use oss_utils;
-use Data::Dumper;
 use vars qw(@ISA);
 @ISA = qw(oss_base);
 
@@ -432,7 +432,6 @@ sub split_conf_file
 			}
 		}
 	}
-#print Dumper(%ddc)."   ddc\n";
 	return \%ddc
 }
 
