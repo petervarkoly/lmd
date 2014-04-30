@@ -75,7 +75,7 @@ sub getCapabilities
 		{ variable     => [ 'description',          [ type => 'label'] ]},
 		{ variable     => [ 'version',              [ type => 'label'] ]},
 		{ variable     => [ 'type',                 [ type => 'label'] ]},
-		{ variable     => [ 'categori_name',        [ type => 'label'] ]},
+		{ variable     => [ 'category_name',        [ type => 'label'] ]},
 	];
 }
 
@@ -565,28 +565,28 @@ sub sw_autoinstall
 	my $this   = shift;
 	my $reply  = shift;
 	my $hw_dn  = 'configurationKey='.$reply->{dn}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	my $hash   = $this->get_sofware_categorie();
+	my $hash   = $this->get_software_category();
 	my @ret;
 
 	my @categories = ( 'categories' );
-	push @categories, { head => [ '', 'categori_name', 'package_list', '' ] };
-	foreach my $categorie ( sort keys %{$hash} ){
+	push @categories, { head => [ '', 'category_name', 'package_list', '' ] };
+	foreach my $category ( sort keys %{$hash} ){
 		my $package_list = '';
 		my @sw_list;
 		my $softwarePerCategory = '';
-		foreach my $sw_dn ( sort keys %{$hash->{$categorie}} ){
-			$package_list .= $hash->{$categorie}->{$sw_dn}."<BR>";
-			push @sw_list, $hash->{$categorie}->{$sw_dn};
+		foreach my $sw_dn ( sort keys %{$hash->{$category}} ){
+			$package_list .= $hash->{$category}->{$sw_dn}."<BR>";
+			push @sw_list, $hash->{$category}->{$sw_dn};
 		}
 		my @first_package = split("<BR>", $package_list);
 
-		my @item = ( "$categorie" );
-		if( $this->check_config_value($hw_dn, 'SWPackageCategory', "$categorie") ){
+		my @item = ( "$category" );
+		if( $this->check_config_value($hw_dn, 'SWPackageCategory', "$category") ){
 			push @item, {inst => "1"};
 		}else{
 			push @item, {inst => ""};
 		}
-		push @item, {categori_name => $categorie};
+		push @item, {category_name => $category};
 		push @item, {name => 'package_list', value => $first_package[0]." ...", attributes => [ type => 'label', help => $package_list]};
 		push @categories, { line => \@item };
 
@@ -633,7 +633,7 @@ sub set_sofware
 		if( $reply->{categories}->{$category}->{inst} )
 		{
 			$this->add_config_value( $hw_dn, 'SWPackageCategory', "$category");
-			my $category_sw_list = $this->get_sofware_categorie($category);
+			my $category_sw_list = $this->get_software_category($category);
 			foreach my $sw_dn ( sort keys %{$category_sw_list->{$category}} ){
 				my $sw_name = $category_sw_list->{$category}->{$sw_dn};
 				$this->add_config_value( $hw_dn, 'SWPackage', "$sw_name");
