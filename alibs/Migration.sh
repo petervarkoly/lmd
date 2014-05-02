@@ -8,11 +8,16 @@ interface()
 
 getCapabilities()
 {
-echo 'title Release Update of OSS
-allowedRole root
-allowedRole sysadmins
-category System
-order 10000'
+	echo 'title Release Update of OSS'
+	echo 'allowedRole root'
+	echo 'allowedRole sysadmins'
+	echo 'category System'
+	echo 'order 10000'
+        SLESP3=$( zypper lr | grep SLES11-SP3 )
+        if [ "$SLESP3" ]
+        then
+		echo 'disabled 1'
+	fi
 }
 
 default()
