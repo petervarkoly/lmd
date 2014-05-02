@@ -20,6 +20,9 @@ sed -i /default-character-set/d /etc/my.cnf
 touch /var/lib/mysql/.force_upgrade
 rcmysql restart
 rclmd restart
+sed -i s/OSS-3-4/OSS-3-4-1/ /etc/zypp/repos.d/OSS-3-4.repo
+mv /etc/zypp/repos.d/OSS-3-4.repo  /etc/zypp/repos.d/OSS-3-4-1.repo
+zypper ref
 echo 'You have to reboot your OSS-server!
 Bitte starten Sie Ihren OSS-Server neu!' > /var/adm/oss/must-restart
 ) &> /var/log/OSS-MIGRATION-SLES11-SP3-$DATE
