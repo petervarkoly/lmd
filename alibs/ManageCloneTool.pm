@@ -453,7 +453,6 @@ sub start
 		}
 	}
 	$PARTITIONS .= $WORKSTATIONS;
-print "\nPARTITIONS $PARTITIONS\n";
 	my $count = `echo "$PARTITIONS" | oss_restore_workstations.pl`;
 
 	my @ret;
@@ -648,7 +647,7 @@ sub set_sofware
 		$newsw .= $i."<BR>";
 	}
 	my @ws = ( 'workstations' );
-	push @ws, { head => [ 'pc_name', 'installed_sw', 'new_sw', 'install_new_sw' ] };
+	push @ws, { head => [ 'name', 'Installed Software', 'New Software', 'Install new Software' ] };
 	foreach my $room ($this->get_rooms()){
 		my $dn_room = $room->[0];
 		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} ){
@@ -672,16 +671,16 @@ sub set_sofware
 	}
 
 	push @ret, { subtitle => 'set_software_to_img' };
-	push @ret, { NOTICE => 'Software category was added successfully to the current hw config!' };
+	push @ret, { NOTICE => 'Software was added successfully to the hardware configuration.' };
 	push @ret, { action => 'cancel' };
 	if( scalar(@ws) > 2 ){
-		push @ret, { NOTICE =>  main::__('It was changed the available software package of the hw config, so it  can be installed for the PCs bellow.')."<BR>".
-					main::__('Please, leave selected the PCs where do you wish to install the new softwares.') };
+		push @ret, { NOTICE =>  main::__('The software belonging to the hardware configuration was changed.')."<BR>".
+					main::__('Please, leave selected the PCs where do you wish to install the new software.') };
 		push @ret, { table  => \@ws };
-		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Run now the install/deinstall command on these selected workstations'] };
-		push @ret, { action => 'realy_set_sofware' };
+		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Start the install/uninstall command immediately.'] };
+		push @ret, { name => 'action',  value => 'realy_set_sofware', attributes => [ label => 'apply' ] };
 	}else{
-		push @ret, { NOTICE => 'There is no hw config associated to the PCs bellow' };
+		push @ret, { NOTICE => 'There is no hardware configuration associated to the PCs bellow.' };
 	}
 	push @ret, { dn => $reply->{dn} };
 	return \@ret;
