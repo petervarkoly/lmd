@@ -1515,13 +1515,25 @@ sub applyRenamePC
 	my $hwaddress       = $old_pc->{dhcphwaddress}->[0];
 	$hwaddress          =~ s/ethernet //i;
 	my $old_hostname    = $old_pc->{cn}->[0];
+        my @hosts      = $this->get_free_pcs_of_room($reply->{rooms});
+        # Test if there is a free place in room.
+	# TODO this is not a problem if new room is old room.
+        # In this case the hosts list must contains only the actual host.
+        if( !scalar(@hosts) ) {
+                return {
+                        TYPE    => 'ERROR',
+                        CODE => 'NO_MORE_FREE_ADDRESS_IN_ROOM',
+                        MESSAGE => 'There are no more free addresses in this room.'
+                };
+        }
+        my $freeze = encode_base64(freeze(\@hosts),"");
+        main::AddSessionDatas($freeze,'hosts');
 	#delete the old host
 	$this->delete_host($reply->{dn});
 	$new_host->{flag}        = 1;
 	$new_host->{hwaddresses} = $hwaddress;
 	$new_host->{dn}          = $reply->{rooms};
 	$new_host->{other_name}  = $reply->{other_name};
-	my @hosts      = $this->get_free_pcs_of_room($reply->{rooms});
 	my $new_pc_dn  = $this->addPC($new_host);
 	if( ref $new_pc_dn eq 'HASH')
 	{
