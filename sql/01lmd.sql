@@ -1,5 +1,4 @@
-# Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
-DROP DATABASE IF EXISTS `lmd`;
+# Copyright (c) 2004-2014 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 CREATE DATABASE `lmd` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 use lmd;
 DROP TABLE IF EXISTS `sessions`;
