@@ -461,11 +461,16 @@ sub setAcl
 {
 	my $this     = shift;
 	my $reply    = shift;
-	my $cmd      = '';
+        my $path     = $reply->{actpath};
+        my $cmd      = '';
+        my $GROUP    = `stat --printf="%G" '$path'`;
+        my $OWNER    = `stat --printf="%U" '$path'`;
 	foreach my $dn (split /\n/,$reply->{newowner}) 
 	{
 		$cmd  = 'setfacl ';
 		my $n = get_name_of_dn($dn);
+		$n = "" if( $this->is_user($dn)  && $n eq $OWNER );
+		$n = "" if( $this->is_group($dn) && $n eq $GROUP );
 		$cmd .= '-d '  if( $reply->{default} );
 		$cmd .= '-R '  if( $reply->{recursively} );
 		$cmd .= '-m ';
