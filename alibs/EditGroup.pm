@@ -98,7 +98,7 @@ sub default
 
         if( main::GetSessionValue('role') eq 'teachers' )
 	{
-        	my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search(main::GetSessionValue('dn'));
+        	my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search(main::GetSessionValue('dn'),1);
 		push @ret, { group       => $workgroups };
 		push @ret, { rightaction => "edit" };
 		push @ret, { rightaction => "delete" };

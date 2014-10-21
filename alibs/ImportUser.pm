@@ -632,9 +632,11 @@ sub RecodeImportFile($) {
         if( $format eq 'unknown' ) {
            $format  = 'iso-8859-1';
         }
-        system("recode $format..utf8 $file");
-
-        return 1;
+        if( system("recode $format..utf8 $file") == 0 )
+	{
+        	return 1;
+	}
+	return 0;
 }
 #-----------------------------------------------------------------------
 sub get_import_list

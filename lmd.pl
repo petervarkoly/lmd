@@ -1565,7 +1565,7 @@ sub login
 	{
 		push @reply, { class   => get_name_of_dn($class->[0]) };
 	}
-	foreach my $i ( @{$result->{$dn}->{uniqueidentifier}->[0]} )
+	foreach my $i ( @{$result->{$dn}->{configurationvalue}} )
 	{
 		push @reply, { configurationvalue   => $i };
 	}

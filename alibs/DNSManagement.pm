@@ -246,7 +246,7 @@ sub deleteRealy
 	if ($mesg->count != 0) {
 		return [
                         { NOTICE => 'Sajnalom nem torulheto mert suseMailAcceptAddress kent hasznalva van.'},
-                        ]
+                       ]
 	}
 
 	my $base = 'zoneName='.$dom.','.$this->{SYSCONFIG}->{DNS_BASE};
@@ -530,18 +530,12 @@ sub addrecord
         }
 
 	my @dns_class = ( 'IN', 'ANY', 'CH', 'HS', '---DEFAULTS---', 'IN');
-	my @record_type,
-	my $dnszona_schemasubs = get_file("/etc/openldap/schema/dnszone.schema");
-	my @file_sch = split("\n",$dnszona_schemasubs);
-	foreach my $line (@file_sch){
-		if($line =~ /^attributetype(.*)NAME \'(.*)Record\'$/){
-			if( ($2 ne 'a') and ($2 ne 'pTR')){
-				push @record_type, "$2Record";
-			}
-		}
-	}
-	push @record_type, '---DEFAULTS---';
-	push @record_type, 'sRVRecord';
+        my @record_type = qw( MDRecord MXRecord  NSRecord 
+              SOARecord  CNAMERecord  PTRRecord  HINFORecord 
+              MINFORecord  TXTRecord  SIGRecord  KEYRecord 
+              AAAARecord  LOCRecord  NXTRecord  SRVRecord 
+              NAPTRRecord  KXRecord  CERTRecord  A6Record 
+              DNAMERecor );
 
 	push @ret, { subtitle => "Create new record" };
         push @ret, { label => main::__('domain_name').": $reply->{zone}" };
