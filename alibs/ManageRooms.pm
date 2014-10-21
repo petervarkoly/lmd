@@ -1596,6 +1596,7 @@ sub ANON_DHCP
 	foreach my $room ( $this->get_rooms() ){
 		my $room_dn   = $room->[0];
 		my $roomnet   = $this->get_attribute($room_dn,'dhcpRange').'/'.$this->get_attribute($room_dn,'dhcpNetMask');
+		next if( $roomnet !~ /\d+\.\d+\.\d+\.\d+\/\d+/ );
 		my $roompref  = $this->get_attribute($room_dn,'description');
 		my $block = new Net::Netmask($roomnet);
 		my $base       = $block->base();
@@ -1748,6 +1749,9 @@ sub get_free_pcs_of_room
 	my $room = shift;
 	my @hosts= ();
 	my $roomnet    = $this->get_attribute($room,'dhcpRange').'/'.$this->get_attribute($room,'dhcpNetMask');
+        if( $roomnet !~ /\d+\.\d+\.\d+\.\d+\/\d+/ ) {
+                return @hosts;
+        }
 	my $roompref   = $this->get_attribute($room,'description');
 	my $block      = new Net::Netmask($roomnet);
 	my %lhosts     = ();
