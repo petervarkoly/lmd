@@ -617,8 +617,10 @@ sub editPC
 	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
 	$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})     if( defined $reply->{serial} );
 	$this->set_config_value($dn,'INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
+	$this->set_config_value($dn,'LOCALITY',$reply->{locality})       if( defined $reply->{locality} );
 	push @ret, { serial   => $this->get_config_value($dn,'SERIALNUMBER')   };
 	push @ret, { inventar => $this->get_config_value($dn,'INVENTARNUMBER') };
+	push @ret, { locality => $this->get_config_value($dn,'LOCALITY') };
 	if( $this->get_config_value($dn,'MASTER') ne "yes" )
 	{# Do not set separate values for master!
 		foreach my $p ( sort keys %parts  )
