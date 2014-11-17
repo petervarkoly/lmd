@@ -379,7 +379,7 @@ sub setAccessScheduler
 	foreach my $key ( keys %{$reply->{acls}} )
 	{
 	    next if ($reply->{acls}->{$key}->{delete});
-            my ( $h,$m,$wd,$hd ) = split /:/,$key;
+	    my ( $h,$m ) = split /:/,$reply->{acls}->{$key}->{time};
 	    my $fkey = "$h:$m:1111111";
 	    if( $reply->{acls}->{$key}->{workday} )
 	    {
