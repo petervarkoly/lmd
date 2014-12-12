@@ -35,6 +35,7 @@ sub interface
 		"apply_trusts",
 		"rooms",
 		"set_rooms",
+		"workstations",
 		"back",
 		"next",
 		"firstpage",
@@ -281,8 +282,6 @@ sub rooms
         my $reply       = shift;
         my $printers    = $this->get_printers();
         my $defaultp    = $printers->{DEFAULT};
-        my @lines       = ('rooms');
-
         my @table       = ('room',{ head => [ 'room', 'default_printer','available_printer' ] } );
 
         my $current_page;
@@ -304,6 +303,8 @@ sub rooms
         foreach my $room (@rooms) {
 		my $dn   = $room->[0];
 		my $desc = $room->[1];
+                $count++;
+		next if ( $desc eq 'ANON_DHCP' );
                 if( ($count < $pagelinemax) and ($count >= $pagelinemin) ){
                         my @printername;
                         my @ap = ();
@@ -329,22 +330,22 @@ sub rooms
 
 			push @printername, '---';
 
-                        push @table, { line => [ $room,
-                                        { name => 'room_list', value => $desc, attributes => [ type => 'label', style => "width:150px" ] },
-                                        { name => 'dprinter' , value => [ @printername, '---DEFAULTS---', $dprinter->[0] ], attributes => [type => "popup"] },
+                        push @table, { line => [ $dn,
+                                        { name     => 'room_list', value => $desc, attributes => [ type => 'label', style => "width:150px" ] },
+                                        { name     => 'dprinter' , value => [ @printername, '---DEFAULTS---', $dprinter->[0] ], attributes => [type => "popup"] },
                                         { aprinter => \@ap}  ,
-                                        { name => 'dn',        value => $dn, attributes => [ type => "hidden"] }
+					{ current_page  => $current_page },
+					{ action   => 'workstations' } 
                         ]};
                 }
-                $count++;
         }
 
 
 	my @r = ();
-	push @r, { subtitle => 'Manage Standard Printer of Rooms' };
-	push @r, { table    => \@table };
-	push @r, { current_page => $current_page };
-	push @r, { page_number => $page_number };
+	push @r, { subtitle      => 'Manage Standard Printer of Rooms' };
+	push @r, { table         => \@table };
+	push @r, { current_page  => $current_page };
+	push @r, { page_number   => $page_number };
 	push @r, { rightaction   => 'cancel' };
 	push @r, { name => 'rightaction', value => 'set_rooms', attributes => [ label => 'apply' ] };
 	@r = $this->addturner(\@r);
@@ -426,27 +427,78 @@ sub set_rooms
 	my $reply	= shift;
 	my $printers    = $this->get_printers();
 	
-	foreach my $r ( keys %{$reply->{room}} ){
+	foreach my $dn ( keys %{$reply->{room}} ){
                         my @apr;
-                        my @aprint = split ('\n',$reply->{room}->{$r}->{aprinter});
+                        my @aprint = split ('\n',$reply->{room}->{$dn}->{aprinter});
                         foreach my $aprinter ( @aprint ){
                                 push @apr, $aprinter;
                         }
 
-			if( (defined $reply->{room}->{$r}->{dprinter}) and ($reply->{room}->{$r}->{dprinter} ne '---') ){
-                                $this->create_vendor_object($reply->{room}->{$r}->{dn},'EXTIS','DEFAULT_PRINTER',$reply->{room}->{$r}->{dprinter});
+			if( (defined $reply->{room}->{$dn}->{dprinter}) and ($reply->{room}->{$dn}->{dprinter} ne '---') ){
+                                $this->create_vendor_object($dn,'EXTIS','DEFAULT_PRINTER',$reply->{room}->{$dn}->{dprinter});
                         }else{
-                                $this->delete_vendor_object($reply->{room}->{$r}->{dn},'EXTIS','DEFAULT_PRINTER');
+                                $this->delete_vendor_object($dn,'EXTIS','DEFAULT_PRINTER');
                         }
 
-	                if( (defined $reply->{room}->{$r}->{aprinter}) and ($reply->{room}->{$r}->{aprinter} ne '') ) {
-	                        $this->create_vendor_object($reply->{room}->{$r}->{dn},'EXTIS','AVAILABLE_PRINTER',$reply->{room}->{$r}->{aprinter});
+	                if( (defined $reply->{room}->{$dn}->{aprinter}) and ($reply->{room}->{$dn}->{aprinter} ne '') ) {
+	                        $this->create_vendor_object($dn,'EXTIS','AVAILABLE_PRINTER',$reply->{room}->{$dn}->{aprinter});
 	                }else{
-	                        $this->delete_vendor_object($reply->{room}->{$r}->{dn},'EXTIS','AVAILABLE_PRINTER');
+	                        $this->delete_vendor_object($dn,'EXTIS','AVAILABLE_PRINTER');
         	        }
         }
 
 	$this->rooms($reply);
+}
+
+sub workstations
+{ #Set printers by workstations
+        my $this     = shift;
+        my $reply    = shift;
+        my $room     = $reply->{line};
+        my $printers = $this->get_printers();
+        my $defaultp = $printers->{DEFAULT};
+        my @table    = ('room',{ head => [ 'workstation', 'default_printer','available_printer' ] } );
+
+	for my $dn ( @{$this->get_workstations_of_room($room)} )
+	{
+            my @printername;
+            my @ap = ();
+            foreach my $pn (sort (keys %{$printers}))
+	    {
+                    push @printername, $pn;
+            }
+
+            my $dprinter =  $this->get_vendor_object($dn,'EXTIS','DEFAULT_PRINTER');
+	    if( !$dprinter->[0] )
+	    {
+	    	$dprinter->[0] = '---'; 
+	    }
+
+            push @ap, @printername;
+            push @ap, '---DEFAULTS---';
+            my $aprinters = $this->get_vendor_object($dn,'EXTIS','AVAILABLE_PRINTER');
+            my @aprint = split ('\n',$aprinters->[0]);
+            foreach my $aprinter ( @aprint )
+	    {
+                    push @ap, $aprinter;
+            }
+
+	    push @printername, '---';
+
+            push @table, { line => [ $dn,
+                            { name     => 'room_list', value => get_name_of_dn($dn), attributes => [ type => 'label', style => "width:150px" ] },
+                            { name     => 'dprinter' , value => [ @printername, '---DEFAULTS---', $dprinter->[0] ], attributes => [type => "popup"] },
+                            { aprinter => \@ap}
+            ]};
+	}
+
+	my @r = ();
+	push @r, { subtitle      => 'Manage Printers in a Room' };
+	push @r, { table         => \@table };
+	push @r, { current_page  => $reply->{room}->{$room}->{current_page} };
+	push @r, { rightaction   => 'cancel' };
+	push @r, { name => 'rightaction', value => 'set_rooms', attributes => [ label => 'apply' ] };
+        return \@r;
 }
 
 sub adm_trusts
