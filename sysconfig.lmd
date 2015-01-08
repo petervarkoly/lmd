@@ -24,6 +24,13 @@ LMD_PORT="1967"
 LMD_SESSION_TIMEOUT="90"
 
 ## Type:                string
+## Default:             "5"
+#
+#  LMD bad login time out in seconds 
+#
+LMD_BAD_LOGIN_TIMEOUT="5"
+
+## Type:                string
 ## Default:             "YYYY-MM-DD"
 #
 #  Date format used by OSSADMIN for different langugages.
@@ -32,8 +39,35 @@ LMD_SESSION_TIMEOUT="90"
 #	OSS_DATE_FORMAT_UPPERCASE_LANGUAGE="FORMAT[MM/DD/YYYY]" 
 #
 OSS_DATE_FORMAT_DE="DD.MM.YYYY"
+
+## Type:                string
+## Default:             "YYYY-MM-DD"
+#
+#  Date format used by OSSADMIN for different langugages.
+#  If ossadmin doesn't find the date format for a language then will use YYYY-MM-DD.
+#  New language formats must be added here in the following format:
+#	OSS_DATE_FORMAT_UPPERCASE_LANGUAGE="FORMAT[MM/DD/YYYY]" 
+#
 OSS_DATE_FORMAT_HU="YYYY-MM-DD"
+
+## Type:                string
+## Default:             "YYYY-MM-DD"
+#
+#  Date format used by OSSADMIN for different langugages.
+#  If ossadmin doesn't find the date format for a language then will use YYYY-MM-DD.
+#  New language formats must be added here in the following format:
+#	OSS_DATE_FORMAT_UPPERCASE_LANGUAGE="FORMAT[MM/DD/YYYY]" 
+#
 OSS_DATE_FORMAT_EN="DD-MM-YYYY"
+
+## Type:                string
+## Default:             "YYYY-MM-DD"
+#
+#  Date format used by OSSADMIN for different langugages.
+#  If ossadmin doesn't find the date format for a language then will use YYYY-MM-DD.
+#  New language formats must be added here in the following format:
+#	OSS_DATE_FORMAT_UPPERCASE_LANGUAGE="FORMAT[MM/DD/YYYY]" 
+#
 OSS_DATE_FORMAT_EN_US="MM/DD/YYYY"
 
 ## Type:		string

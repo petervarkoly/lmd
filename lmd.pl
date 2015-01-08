@@ -127,7 +127,7 @@ unlink "/var/run/lmd.sock" if ( -e "/var/run/lmd.sock" && $ADDRESS eq 'unix' );
 srand;
 
 #Read some LMD settings from /etc/sysconfig/lmd
-my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB ) = 
+my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB, $BAD_LOGIN_TIMEOUT ) = 
 	parse_file( "/etc/sysconfig/lmd", 
 	"LMD_APPLICATIONS_NOT_TO_ARCHIVE=",
        	"LMD_APPLICATIONS_TO_ARCHIVE=",
@@ -136,7 +136,8 @@ my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, 
        	"LMD_DB_CONNECTION=",
        	"LMD_DB_USER=",
        	"LMD_DB_PW=",
-	"LMD_SAVE_PASSWORD_IN_DB=");
+	"LMD_SAVE_PASSWORD_IN_DB=",
+	"LMD_BAD_LOGIN_TIMEOUT=");
 $ARCHIVE_REQUESTS = ( $ARCHIVE_REQUESTS eq 'yes' ) ? 1:0;
 my @CATEGORIES = split /,/,$ORDER;
 
@@ -1510,6 +1511,7 @@ sub login
     }
     if( ! $dn ) {
 	$oss->destroy();
+	sleep($BAD_LOGIN_TIMEOUT);
         return ReturnError(['LOGIN_FAILED',"User not found"]);
     }
     if( $result = $oss->login($dn,$REQUEST->{userpassword},$REQUEST->{ip},0) )
@@ -1585,6 +1587,7 @@ sub login
     else
     {
 	$oss->destroy();
+	sleep($BAD_LOGIN_TIMEOUT);
         return ReturnError(['LOGIN_FAILED',$oss->{ERROR}->{text}]);
     }
 }
@@ -1811,6 +1814,7 @@ sub oss_service
     my $logfile = shift;
     my $value=`cat $logfile`;
     my $output;
+    my $role = GetSessionValue('role');
     my $writer = new XML::Writer(OUTPUT => \$output, ENCODING => "UTF-8", DATA_MODE => 1, UNSAFE=>1);
     $writer->xmlDecl("UTF-8");
     $writer->startTag("reply", name=>'Service', action=>'Message', sessionID=>$SESSIONID, result=> "0" );
@@ -1818,13 +1822,15 @@ sub oss_service
     $writer->startTag('label', @attributes);
     $writer->cdata('Your server is in service state');
     $writer->endTag('label');
-    @attributes = ( 'type' , 'text' );
-    $writer->startTag('message', @attributes);
-    $writer->cdata($value);
-    $writer->endTag('message');
-    if( $logfile eq '/var/adm/oss/must-restart' )
-    {
-        writeVariable($writer,'action',{ action => 'reboot' });
+    if( $role =” /sysadmins/ ) {
+        @attributes = ( 'type' , 'text' );
+        $writer->startTag('message', @attributes);
+        $writer->cdata($value);
+        $writer->endTag('message');
+        if( $logfile eq '/var/adm/oss/must-restart' )
+        {
+            writeVariable($writer,'action',{ action => 'reboot' });
+        }
     }
     $writer->endTag("reply");
     $writer->end();
