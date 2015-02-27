@@ -26,7 +26,7 @@ install:
 	mkdir -p $(DESTDIR)/etc/apache2/vhosts.d/oss-ssl/
 	mkdir -p $(DESTDIR)/var/adm/fillup-templates/
 	mkdir -p $(DESTDIR)/usr/share/oss/tools
-	mkdir -p $(DESTDIR)/srv/www/cgi-bin/
+	mkdir -p $(DESTDIR)/srv/www/{cgi-bin,admin/images}
 	install -m 644 ossadmin.war   $(TOMCATROOT)
 	install -m 700 lmd.pl      $(DESTDIR)/usr/sbin/
 	cp -a tools/*              $(LMDDIR)/tools/
@@ -37,6 +37,7 @@ install:
 	install -m 644 sql/*       $(LMDDIR)/sql
 	install -m 644 ossmobile.pm  $(LMDDIR)
 	install -m 644 ossmobile.css $(DESTDIR)/srv/www/admin/
+	install -m 644 images/*    $(DESTDIR)/srv/www/admin/images/
 	install -m 755 rc.lmd      $(DESTDIR)/etc/init.d/lmd
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/admin-ssl/
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/oss-ssl/

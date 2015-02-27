@@ -185,6 +185,19 @@ sub login
 
 }
 
+sub addSession
+{
+    open SES, ">>/tmp/ossmobile.sessions";
+    print SES join(":",@_)."\n";
+    close SES;
+}
+sub getSession
+{
+    my $TMP = `grep $SESSIONID /tmp/ossmobile.sessions`;
+    my @LTP = split /:/,$TMP;
+    return " <bold>Benutzer: ".$LTP[1]." Raum:".$LTP[2].'<bold>';
+}
+
 sub checkLogin
 {
 
@@ -199,6 +212,12 @@ sub checkLogin
 </request>' ;
     sendRequest($REQUEST);
     Debug("SESSSIONID $SESSIONID\n");
+    #Take the room and the name
+    $CONTENT =~ /name="sn" value="(.*)"/;
+    my $NAME = $1 || "";
+    $CONTENT =~ /name="room" value="(.*)"/;
+    my $ROOM = $1 || "";
+    addSession($SESSIONID,$NAME,$ROOM);
     $this->getMenu();
     sendRequest('<request name="default" application="MobileSite" sessionID="'.$SESSIONID.'" ip="'.$this->{CGI}->remote_addr.'"/>');
     $this->printMenu();
@@ -311,7 +330,8 @@ sub printMenu
     print     $CGI->start_table({-class=>'AdminBorder'});
     print         $CGI->start_Tr();
     print             $CGI->start_td({-class=>'AdminHead',-colspan=>$colspan});
-    print		  $CGI->a({-class=>'HeadMenuItem',-href =>'/cgi-bin/ossmobile.pl?ACTION=logout&SESSIONID='.$SESSIONID},menuItem('logout'));
+    print		  $CGI->a({-class=>'HeadMenuItem',-href =>'/cgi-bin/ossmobile.pl?ACTION=logout&SESSIONID='.$SESSIONID},"Abmelden");
+    print		  getSession();
     print             $CGI->end_td();
     print         $CGI->end_Tr();
     my $main_menu = $CGI->start_table({-class=>'MainMenu'});
