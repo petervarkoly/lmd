@@ -35,10 +35,12 @@ install:
 	install -m 755 alibs/*sh   $(LMDDIR)/alibs
 	install -m 644 helper/*    $(LMDDIR)/helper
 	install -m 644 sql/*       $(LMDDIR)/sql
+	install -m 644 ossmobile.pm  $(LMDDIR)
+	install -m 644 ossmobile.css $(DESTDIR)/srv/www/admin/
 	install -m 755 rc.lmd      $(DESTDIR)/etc/init.d/lmd
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/admin-ssl/
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/oss-ssl/
-	install -m 755 itool.pl    $(DESTDIR)/srv/www/cgi-bin/
+	install -m 755 itool.pl ossmobile.pl $(DESTDIR)/srv/www/cgi-bin/
 	install -m 755 enhance_translation.pl $(DESTDIR)/usr/share/oss/tools
 	if [ -e $(DESTDIR)/usr/sbin/rclmd ] ; then \
 	   rm $(DESTDIR)/usr/sbin/rclmd; \

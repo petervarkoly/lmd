@@ -5,7 +5,8 @@ body {
    font: 69% Tahoma,Verdana,Arial,sans-serif;
    margin: 0;
    padding: 0;
-   background-color: #CCCACA;
+   background-color: #77aaff;
+   background-image: url("/images/ossmobileback.png")
 }
 
 table, input, select {
@@ -36,6 +37,9 @@ a img {
 /* SPECIAL ELEMENTS '*/
 /*********************/
 a.HeadMenuItem {
+	font-weight: bold;
+	font-size: 1.5em;
+	text-align: right;	
 }
 
 /* TABLES '*/
@@ -80,22 +84,22 @@ td.AdminHead {
 	height: 50px;
 }
 td.ApplicationTitle {
-	font-size: 1.8em;
+	font-size: 2.4em;
 	text-align: center;	
 }
 
 td.ApplicationSubTitle {
-	font-size: 1.4em;
+	font-size: 2.0em;
 	text-align: center;	
 }
 
 td.ERRORMesage {
-	font-size: 1.4em;
+	font-size: 1.5em;
 	color: red;
 }
 
 td.Notice {
-	font-size: 1.4em;
+	font-size: 1.5em;
 	color: blue;
 }
 
@@ -103,11 +107,11 @@ td.MainMenuContent {
 }
 
 td.MainMenuItem {
-	font-size: 1.4em;
+	font-size: 2.4em;
 }
 td.ActivMainMenuItem {
 	font-weight: bold;
-	font-size: 1.4em;
+	font-size: 2.4em;
 }
 td.SubMenuItem {
         padding: 5px;

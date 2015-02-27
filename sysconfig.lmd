@@ -78,3 +78,11 @@ LMD_APPLICATIONS_TO_ARCHIVE="Add*:.*|Edit*:.*|RoomAccessControl:set*"
 # The lmd does not archive these actions. This is a pattern match string. Format: Application:Action[|Application:Action]
 #
 LMD_APPLICATIONS_NOT_TO_ARCHIVE="ClientControl:.*|.*:default"
+
+## Type:	string
+## Default:	"MobileSite,ManageYourself"
+#
+# Comma separated list of modules which will be available for mobile sites
+#
+LMD_MOBILE_MODULES="MobileSite,ManageYourself"
+
