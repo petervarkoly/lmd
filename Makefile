@@ -54,13 +54,15 @@ installalibs:
 	install -m 644 alibs/*pm   $(LMDDIR)/alibs
 	install -m 755 alibs/*sh   $(LMDDIR)/alibs
 
-dist:
+tar:
 	if [ -e lmd ]; then rm -rf lmd; fi
 	mkdir lmd
 	cp -rp Makefile alibs enhance_translation.pl helper images itool.pl jk.conf lang lmd.pl ossadmin.war *.lmd sql tools lmd
 	find lmd \( -not -regex "^.*\.git\/.*" -a -not -regex "^.*\.svn\/.*" \) -xtype f > files; \
 	    tar jcpf $(PACKAGE).tar.bz2 -T files;
 	rm files
+
+dist:   tar
 	sed "s/@VERSION@/$(VERSION)/" $(PACKAGE).spec.in > $(PACKAGE).spec
 	sed -i "s/@RELEASE@/$(NRELEASE)/"  $(PACKAGE).spec
 	rm -rf lmd
