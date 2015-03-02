@@ -336,11 +336,11 @@ sub stateOfRooms
                 my $lu = {};
                 foreach my $logged_user (@{ $this->get_logged_users($dn) } )
                 {
-                        $lu{$logged_user->{host_name}}->{user_cn}   = $logged_user->{user_cn};
-                        $lu{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
+                        $lu->{$logged_user->{host_name}}->{user_cn}   = $logged_user->{user_cn};
+                        $lu->{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
                 }
-		foreach my $host_name (sort keys %{$lu} ){
-			$users .= $hostname.': '.$lu->{host_name}->{user_cn}.'('.$lu->{host_name}->{user_name}.')<br>';
+		foreach my $hotname (sort keys %{$lu} ){
+			$users .= $hostname.': '.$lu->{$hostname}->{user_cn}.'('.$lu->{$hostname}->{user_name}.')<br>';
 		}
 		if( $users eq "" )
 		{
