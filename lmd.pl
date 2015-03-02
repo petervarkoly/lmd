@@ -1525,6 +1525,9 @@ sub translate($$)
 
 sub logout
 {
+   my $oss    = oss_base->new();
+   $oss->{LDAP}->modify( GetSessionValue('dn'), delete => { cvalue => "LOGGED_ON=".GetSessionValue('IP') } );
+   $oss->destroy();
    $DBH->do("UPDATE sessions SET logoff='".time."' WHERE id='$SESSIONID'"); 
    my $output;
    my $writer = new XML::Writer(OUTPUT => \$output, ENCODING => "UTF-8", DATA_MODE => 1);
