@@ -464,16 +464,16 @@ sub step4
 	my $act_user = $this->get_attribute(main::GetSessionValue('dn'),"uid");
 
         my $lu = {};
-        foreach my $logged_user (@{ $this->get_logged_users($dn) } )
+        foreach my $logged_user (@{ $this->get_logged_users($actuale_room_dn) } )
         {
-                $lu{$logged_user->{host_name}}->{user_dn}   = $logged_user->{user_dn};
-                $lu{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
+                $lu->{$logged_user->{host_name}}->{user_dn}   = $logged_user->{user_dn};
+                $lu->{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
         }
         foreach my $host_name (sort keys %{$lu} )
 	{
 		if( (exists($lu->{$host_name}->{user_name})) and ($lu->{$host_name}->{user_name} ne "$act_user" ) )
 		{
-			push @users_tmp, $lu->{$host_name}->{user_name}."(".$this->get_attribute($lu->{$host_name}->{user_dn}),'role').')';
+			push @users_tmp, $lu->{$host_name}->{user_name}."(".$this->get_attribute($lu->{$host_name}->{user_dn},'role').')';
 		}
 	}
 
@@ -532,15 +532,15 @@ sub step6
         my $lu = {};
         foreach my $logged_user (@{ $this->get_logged_users($actuale_room_dn) } )
         {
-                $lu{$logged_user->{host_name}}->{user_dn}   = $logged_user->{user_dn};
-                $lu{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
+                $lu->{$logged_user->{host_name}}->{user_dn}   = $logged_user->{user_dn};
+                $lu->{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
         }
 	my $act_user = $this->get_attribute(main::GetSessionValue('dn'),"uid");
         foreach my $host_name (sort keys %{$lu} )
 	{
 		if( (exists($lu->{$host_name}->{user_name})) and ($lu->{$host_name}->{user_name} ne "$act_user" ) )
 		{
-			push @users_tmp, $lu->{$host_name}->{user_name}."(".$this->get_attribute($lu->{$host_name}->{user_dn}),'role').')';
+			push @users_tmp, $lu->{$host_name}->{user_name}."(".$this->get_attribute($lu->{$host_name}->{user_dn},'role').')';
 		}
 	}
 
@@ -882,9 +882,9 @@ sub show
         my $logged_users = {};
         foreach my $logged_user (@{ $this->get_logged_users($actuale_room_dn) } )
         {
-                $logged_users{$logged_user->{dn}}->{host_name} = $logged_user->{host_name};
-                $logged_users{$logged_user->{dn}}->{user_name} = $logged_user->{user_name};
-                $logged_users{$logged_user->{dn}}->{user_cn}   = $logged_user->{user_cn};
+                $logged_users->{$logged_user->{dn}}->{host_name} = $logged_user->{host_name};
+                $logged_users->{$logged_user->{dn}}->{user_name} = $logged_user->{user_name};
+                $logged_users->{$logged_user->{dn}}->{user_cn}   = $logged_user->{user_cn};
         }
 	foreach my $dn (sort keys %{$logged_users} )
 	{
