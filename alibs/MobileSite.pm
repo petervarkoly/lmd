@@ -43,7 +43,9 @@ sub getCapabilities
                 { category     => 'MOBILEAPPS' },
                 { order        => 50 },
                 { variable     => [ "rooms",                           [ type => "popup", label => 'Please choose a room:' ]]},
+                { variable     => [ "users",                           [ type => "hidden" ]]},
                 { variable     => [ "pc_name",                         [ type => "label" ]]},
+                { variable     => [ "notice",                          [ type => "label" ]]},
                 { variable     => [ "user",                            [ type => "label" ]]}
         ];
 }
@@ -80,7 +82,7 @@ sub showWSLoggedin
 	my $cn     = $this->get_attribute($dn,'cn');
 
 	my @other  = ();
-	my @ret    = { NOTICE => sprintf( main::__('Hallo %s! Wellcome on "%s"!'),$cn, $ws ) };
+	my @ret    = { NOTICE => sprintf( main::__('Hallo %s! Welcome on "%s"!'),$cn, $ws ) };
 	my $mesg = $this->{LDAP}->search( base    => $this->{SYSCONFIG}->{USER_BASE},
                                           scope   => 'sub',
                                           attrs   => ['uid','cn'],
@@ -95,7 +97,7 @@ sub showWSLoggedin
 	{
 	        my @tmp = ('others');
 		push @tmp, @other;
-		push @ret, { NOTICE => "You are not the only one, logged on on this workstation." };
+		push @ret, { NOTICE => "You are not the only one, logged on on this workstation.<b>Notice this your teacher!" };
 		push @ret, { table => \@tmp };
 	}
 	return \@ret;
@@ -106,9 +108,11 @@ sub showRoomLoggedin
         my $this   = shift;
         my $reply  = shift;
         my $type   = shift;
+        my $role   = main::GetSessionValue('role');
         my $myroom = shift || $this->get_room_by_name(main::GetSessionValue('room'));
         my @lines  = ('logon_user');
-        my @ret;
+        my @ret    = ();
+        my @users  = ();
 
         my $room_name = $this->get_attribute($myroom,'description');
         if( $type eq "sysadmins_root"){
@@ -142,14 +146,38 @@ sub showRoomLoggedin
         {
                 foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
                 {
-                        push @lines, { line => [ $logged_user->{user_dn},
+			if( $role =~ /^root|sysadmins$/  && $this->is_teacher($logged_user->{user_dn}) )
+			{
+				push @users, $logged_user->{user_dn};
+                        	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
-                                                { user      => $logged_user->{user_name} },
+                                                { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
                                                 { user_name => $logged_user->{user_cn} },
 						{ name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] }
                                         ]};
+			}
+			elsif( $this->is_teacher($logged_user->{user_dn}) )
+			{
+                        	push @lines, { line => [ $logged_user->{user_dn},
+                                                { pc_name   => $logged_user->{host_name} },
+                                                { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
+                                                { user_name => $logged_user->{user_cn} },
+						{ notice    => "You can not logout this account." }
+                                        ]};
+			}
+			else
+			{
+				push @users, $logged_user->{user_dn};
+                        	push @lines, { line => [ $logged_user->{user_dn},
+                                                { pc_name   => $logged_user->{host_name} },
+                                                { user      => $logged_user->{user_name}.'('.main::__('students').')'  },
+                                                { user_name => $logged_user->{user_cn} },
+						{ name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] }
+                                        ]};
+			}
                 }
                 push @ret, { table       => \@lines };
+		push @ret, { name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] };
                 push @ret, { action      => 'refresh' };
         }
         return \@ret;
@@ -160,22 +188,35 @@ sub refresh
         my $this   = shift;
         my $reply  = shift;
 
-        if( exists($reply->{rooms}) )
-        {
-                $this->default($reply, "$reply->{rooms}");
-        }
-        else
-        {
-                $this->default($reply);
-        }
+        return $this->default($reply);
+
 }
 
 sub logout_user
 {
         my $this   = shift;
         my $reply  = shift;
+	my $dn     = $reply->{line} || undef;
+	if( defined $dn )
+	{
+	   $this->clean_up_user_attributes($dn);
+	}
+	else
+	{
+	   foreach my $dn ( split /##/,$reply->{users} )
+	   {
+	      $this->clean_up_user_attributes($dn);
+	   }
+	}
+	$this->default();
+}
+
+
+sub clean_up_user_attributes
+{
+        my $this = shift;
+        my $dn   = shift;
 	my @confs  = ();
-	my $dn     = $reply->{line};
 	my $mesg = $this->{LDAP}->search( base => $dn,
                                 scope => "base",
                                 filter=> "objectClass=SchoolAccount",
@@ -201,5 +242,4 @@ sub logout_user
 	{
 	   $this->{LDAP}->modify( $dn ,  add    => { configurationValue => \@newconfs } );
 	}
-	$this->default();
 }

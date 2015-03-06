@@ -107,7 +107,7 @@ sub display
 
     $ACTION       = $params->{'ACTION'};
     $APPLICATION  = $params->{'APPLICATION'};
-    $SESSIONID    = $params->{'SESSIONID'};
+    $SESSIONID    = $params->{'SESSIONID'} || undef;
 
     if( (!defined $ACTION && !defined $APPLICATION) || $ACTION eq 'logout')
     {
@@ -133,7 +133,7 @@ sub display
 sub login
 {
     my $this   = shift;
-    my $params = $this->{"CGI"}->Vars;
+    my $err    = shift || "";
     Debug("login called\n");
 
     my    $CGI = new CGI;
@@ -173,6 +173,13 @@ sub login
 #    print                 $CGI->hidden(-name=>'APPLICATION', -value=>"WEB");
     print             $CGI->end_td();
     print         $CGI->end_Tr();
+    if( $err ) {
+	print         $CGI->start_Tr({-class=>"ContentLine"});
+	print             $CGI->start_td({-class=>'ERRORMesage',-colspan=>2});
+	print		  $err;
+	print             $CGI->end_td();
+	print         $CGI->end_Tr();
+    }
     print     $CGI->end_table();
     print     "\n";
     print     '<input type="hidden" name="ACTION" value="LOGIN" >';
@@ -211,6 +218,10 @@ sub checkLogin
 <ip>'.$this->{CGI}->remote_addr.'</ip>
 </request>' ;
     sendRequest($REQUEST);
+    if( !defined $SESSIONID ) {
+        Debug("Login failed\n");
+	return $this->login("Login failed.");
+    }
     Debug("SESSSIONID $SESSIONID\n");
     #Take the room and the name
     $CONTENT =~ /name="sn" value="(.*)"/;
