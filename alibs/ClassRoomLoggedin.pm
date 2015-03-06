@@ -106,13 +106,13 @@ sub showRoomLoggedin
 		my $lu = {};
 		foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
                 {
-			$lu{$logged_user->{user_cn}}->{user_dn}   = $logged_user->{user_dn}; 
-			$lu{$logged_user->{user_cn}}->{user_name} = $logged_user->{user_name}; 
-			$lu{$logged_user->{user_cn}}->{host_name} = $logged_user->{host_name}; 
+			$lu->{$logged_user->{user_cn}}->{user_dn}   = $logged_user->{user_dn}; 
+			$lu->{$logged_user->{user_cn}}->{user_name} = $logged_user->{user_name}; 
+			$lu->{$logged_user->{user_cn}}->{host_name} = $logged_user->{host_name}; 
 		}
 		foreach my $cn (sort keys %$lu)
 		{
-			push @lines, { line => [ $lu{$cn}->{user_dn}, 
+			push @lines, { line => [ $lu->{$cn}->{user_dn}, 
 						{ pc_name   => $lu->{$cn}->{host_name} },
 						{ user      => $lu->{$cn}->{user_name} },
 						{ user_name => $cn }
