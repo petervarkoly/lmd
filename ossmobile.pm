@@ -218,7 +218,7 @@ sub checkLogin
 <ip>'.$this->{CGI}->remote_addr.'</ip>
 </request>' ;
     sendRequest($REQUEST);
-    if( !defined $SESSIONID ) {
+    if( !$SESSIONID ) {
         Debug("Login failed\n");
 	return $this->login("Login failed.");
     }
