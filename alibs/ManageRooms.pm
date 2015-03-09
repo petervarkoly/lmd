@@ -339,7 +339,8 @@ sub stateOfRooms
                         $lu->{$logged_user->{host_name}}->{user_cn}   = $logged_user->{user_cn};
                         $lu->{$logged_user->{host_name}}->{user_name} = $logged_user->{user_name};
                 }
-		foreach my $hostname (sort keys %{$lu} ){
+		foreach my $hostname (sort keys %{$lu} )
+		{
 			$users .= $hostname.': '.$lu->{$hostname}->{user_cn}.'('.$lu->{$hostname}->{user_name}.')<br>';
 		}
 		if( $users eq "" )
