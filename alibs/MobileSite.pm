@@ -43,7 +43,6 @@ sub getCapabilities
                 { category     => 'MOBILEAPPS' },
                 { order        => 50 },
                 { variable     => [ "rooms",                           [ type => "popup", label => 'Please choose a room:' ]]},
-                { variable     => [ "users",                           [ type => "hidden" ]]},
                 { variable     => [ "pc_name",                         [ type => "label" ]]},
                 { variable     => [ "notice",                          [ type => "label" ]]},
                 { variable     => [ "user",                            [ type => "label" ]]}
@@ -97,7 +96,7 @@ sub showWSLoggedin
 	{
 	        my @tmp = ('others');
 		push @tmp, @other;
-		push @ret, { NOTICE => "You are not the only one, logged on on this workstation.<b>Notice this your teacher!" };
+		push @ret, { NOTICE => "You are not the only one, logged on on this workstation.<br>Notice this your teacher!" };
 		push @ret, { table => \@tmp };
 	}
 	return \@ret;
@@ -112,7 +111,6 @@ sub showRoomLoggedin
         my $myroom = shift || $this->get_room_by_name(main::GetSessionValue('room'));
         my @lines  = ('logon_user');
         my @ret    = ();
-        my @users  = ();
 
         my $room_name = $this->get_attribute($myroom,'description');
         if( $type eq "sysadmins_root"){
@@ -148,7 +146,6 @@ sub showRoomLoggedin
                 {
 			if( $role =~ /^root|sysadmins$/  && $this->is_teacher($logged_user->{user_dn}) )
 			{
-				push @users, $logged_user->{user_dn};
                         	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
@@ -167,7 +164,6 @@ sub showRoomLoggedin
 			}
 			else
 			{
-				push @users, $logged_user->{user_dn};
                         	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('students').')'  },
@@ -177,7 +173,7 @@ sub showRoomLoggedin
 			}
                 }
                 push @ret, { table       => \@lines };
-		push @ret, { name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] };
+		push @ret, { name      => "action", value =>  "logout_user",  attributes => [ label => "logout all" ] };
                 push @ret, { action      => 'refresh' };
         }
         return \@ret;
@@ -188,8 +184,14 @@ sub refresh
         my $this   = shift;
         my $reply  = shift;
 
-        return $this->default($reply);
-
+        if( exists($reply->{rooms}) )
+        {
+                $this->default($reply, $reply->{rooms});
+        }
+        else
+        {
+                $this->default($reply);
+        }
 }
 
 sub logout_user
@@ -197,14 +199,16 @@ sub logout_user
         my $this   = shift;
         my $reply  = shift;
 	my $dn     = $reply->{line} || undef;
+	my $mydn   = main::GetSessionValue('dn');
 	if( defined $dn )
 	{
 	   $this->clean_up_user_attributes($dn);
 	}
 	else
 	{
-	   foreach my $dn ( split /##/,$reply->{users} )
+	   foreach my $dn ( keys %{$reply->{logon_user}} )
 	   {
+	      next if( $dn eq $mydn ); 
 	      $this->clean_up_user_attributes($dn);
 	   }
 	}
