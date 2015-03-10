@@ -502,11 +502,7 @@ sub DeleteSessionDatas
 {
     my $var   = shift || 'default';
     my $ses   = shift || $SESSIONID;
-    my $sel   = $DBH->prepare("DELETE FROM sessiondata WHERE id='$ses' AND variable='$var'");
-    $sel->execute;
-    my $value = $sel->fetch();
-    return $value->[0];
-
+    $DBH->do("DELETE FROM sessiondata WHERE id='$ses' AND variable='$var'");
 }
 
 sub GetSessionDatas
@@ -516,8 +512,8 @@ sub GetSessionDatas
     my $sel   = $DBH->prepare("SELECT value FROM sessiondata WHERE id='$ses' AND variable='$var'");
     $sel->execute;
     my $value = $sel->fetch();
+    return undef if( ! defined $value->[0] );
     return $value->[0];
-
 }
 
 sub AddSessionDatas
