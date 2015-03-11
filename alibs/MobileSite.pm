@@ -8,8 +8,10 @@ use strict;
 use oss_base;
 use oss_pedagogic;
 use oss_utils;
-use vars qw(@ISA);
+use MIME::Base64;
+use Storable qw(thaw freeze);
 use Data::Dumper;
+use vars qw(@ISA);
 @ISA = qw(oss_pedagogic);
 
 sub new
@@ -26,7 +28,9 @@ sub interface
                 "getCapabilities",
                 "default",
                 "refresh",
-		"logout_user"
+                "closeInternet",
+		"openInternet",
+		"logoutUser"
         ];
 }
 
@@ -44,7 +48,8 @@ sub getCapabilities
                 { order        => 50 },
                 { variable     => [ "rooms",                           [ type => "popup", label => 'Please choose a room:' ]]},
                 { variable     => [ "pc_name",                         [ type => "label" ]]},
-                { variable     => [ "notice",                          [ type => "label" ]]},
+                { variable     => [ "message",                         [ type => "label" ]]},
+                { variable     => [ "user_name",                       [ type => "label" ]]},
                 { variable     => [ "user",                            [ type => "label" ]]}
         ];
 }
@@ -107,8 +112,8 @@ sub showRoomLoggedin
         my $this   = shift;
         my $reply  = shift;
         my $type   = shift;
-        my $role   = main::GetSessionValue('role');
         my $myroom = shift || $this->get_room_by_name(main::GetSessionValue('room'));
+        my $role   = main::GetSessionValue('role');
         my @lines  = ('logon_user');
         my @ret    = ();
 
@@ -150,7 +155,7 @@ sub showRoomLoggedin
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
                                                 { user_name => $logged_user->{user_cn} },
-						{ name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] }
+						{ name      => "action", value =>  "logoutUser",  attributes => [ label => "logout" ] }
                                         ]};
 			}
 			elsif( $this->is_teacher($logged_user->{user_dn}) )
@@ -159,7 +164,7 @@ sub showRoomLoggedin
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
                                                 { user_name => $logged_user->{user_cn} },
-						{ notice    => "You can not logout this account." }
+						{ message   => "You can not logout this account." }
                                         ]};
 			}
 			else
@@ -168,13 +173,22 @@ sub showRoomLoggedin
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('students').')'  },
                                                 { user_name => $logged_user->{user_cn} },
-						{ name      => "action", value =>  "logout_user",  attributes => [ label => "logout" ] }
+						{ name      => "action", value =>  "logoutUser",  attributes => [ label => "logout" ] }
                                         ]};
 			}
                 }
-                push @ret, { table       => \@lines };
-		push @ret, { name      => "action", value =>  "logout_user",  attributes => [ label => "logout all" ] };
-                push @ret, { action      => 'refresh' };
+                push @ret, { table    => \@lines };
+		my $logout_users=main::GetSessionDatas('LoggedOutUsers');
+		if( defined $logout_users ) 
+		{
+		    push @ret, { action   => 'openInternet' };
+		}
+		elsif( scalar(@lines) > 1 )
+		{
+                    push @ret, { action   => 'closeInternet' };
+		    push @ret, { name     => "action", value =>  "logoutUser",  attributes => [ label => "logout all" ] };
+		}
+                push @ret, { action   => 'refresh' };
         }
         return \@ret;
 }
@@ -194,7 +208,38 @@ sub refresh
         }
 }
 
-sub logout_user
+sub openInternet
+{
+        my $this   = shift;
+        my $reply  = shift;
+	foreach my $logged_user ( @{thaw(decode_base64(main::GetSessionDatas('LoggedOutUsers')))} )
+	{
+		my $ip = $this->get_ip_of_host($logged_user->{dn});
+		$this->{LDAP}->modify( $logged_user->{user_dn} ,  add    => { configurationValue => "LOGGED_ON=$ip" } );
+	}
+	main::DeleteSessionDatas('LoggedOutUsers');
+	$this->default();
+}
+
+sub closeInternet
+{
+        my $this   = shift;
+        my $reply  = shift;
+	my $mydn   = main::GetSessionValue('dn');
+	my $myroom = main::GetSessionValue('room');
+	my @users  = ();
+        foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
+        {
+		my $dn = $logged_user->{user_dn};
+		next if( $dn eq $mydn ); 
+		push @users, $logged_user;
+		$this->clean_up_user_attributes($dn);
+	}
+        main::AddSessionDatas(encode_base64(freeze(\@users)),'LoggedOutUsers');
+	$this->default();
+}
+
+sub logoutUser
 {
         my $this   = shift;
         my $reply  = shift;
@@ -202,7 +247,7 @@ sub logout_user
 	my $mydn   = main::GetSessionValue('dn');
 	if( defined $dn )
 	{
-	   $this->clean_up_user_attributes($dn);
+	   $this->clean_up_user_attributes($dn) if( $dn ne $mydn );
 	}
 	else
 	{
