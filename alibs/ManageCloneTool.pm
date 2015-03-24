@@ -40,9 +40,13 @@ sub interface
 		"realy_delete_img",
 		"delete_img",
 		"set_default_img",
-		"sw_autoinstall",
-		"realy_set_sofware",
-		"set_sofware",
+		"pkgCategory",
+		"pkgCategoryDetails",
+		"applyChangesForWs",
+		"applyChangesForWsReally",
+		"setPkgsForHW",
+		"pkgFilter",
+		"back",
         ];
 }
 
@@ -197,7 +201,7 @@ sub editHW
 	$VALUES{WSType} = 'FatClient' if( !defined $VALUES{WSType} );
 	my $WSType      = $VALUES{WSType};
 	if( $WSType eq 'FatClient' ) {
-		push @r, { name => 'sw_autoinstall', value => main::__('details'), attributes => [ type => 'action' ] };
+		push @r, { name => 'pkgCategory', value => main::__('details'), attributes => [ type => 'action', help => "pkgAutoinstallationNotice" ] };
 	}
 	elsif( $WSType eq 'MobileDevice' )
 	{
@@ -465,8 +469,8 @@ sub start
 	}
 	push @ret, { NOTICE => main::__('pxe_written') };
 
-	my $sw_inst_msg = $this->install_default_software($reply, 0);
-	push @ret , @$sw_inst_msg if( scalar(@$sw_inst_msg) > 1 );
+	my $msgInstallDefaultPkg = $this->installDefaultPkg($reply, 0);
+	push @ret , @$msgInstallDefaultPkg if( defined $msgInstallDefaultPkg );
 	return \@ret;
 }
 
@@ -559,257 +563,506 @@ sub deleteHW
 	return $this->default();
 }
 
-sub sw_autoinstall
+sub pkgCategory
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $hw_dn  = 'configurationKey='.$reply->{dn}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	my $hash   = $this->get_software_category();
-	my @ret;
+	my $hw     = $reply->{dn};
+	my $hwDn   = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hwDesc = $this->get_attribute( $hwDn, 'description');
+	my $tmpCategory = $this->getPackageCategory();
 
-	my @categories = ( 'categories' );
-	push @categories, { head => [ '', 'category_name', 'package_list', '' ] };
-	foreach my $category ( sort keys %{$hash} ){
-		my $package_list = '';
-		my @sw_list;
-		my $softwarePerCategory = '';
-		foreach my $sw_dn ( sort keys %{$hash->{$category}} ){
-			$package_list .= $hash->{$category}->{$sw_dn}."<BR>";
-			push @sw_list, $hash->{$category}->{$sw_dn};
-		}
-		my @first_package = split("<BR>", $package_list);
-
-		my @item = ( "$category" );
-		if( $this->check_config_value($hw_dn, 'SWPackageCategory', "$category") ){
-			push @item, {inst => "1"};
-		}else{
-			push @item, {inst => ""};
-		}
-		push @item, {category_name => $category};
-		push @item, {name => 'package_list', value => $first_package[0]." ...", attributes => [ type => 'label', help => $package_list]};
-		push @categories, { line => \@item };
-
-	}
-
-	push @ret, { subtitle => 'set_software_to_img' };
-	push @ret, { table  => \@categories };
-	push @ret, { action => 'cancel' };
-	if( keys %{$hash} ){
-		push @ret, { NOTICE => main::__('sw_autoinstall_note') };
-		push @ret, { dn => $reply->{dn} };
-		push @ret, { action => 'set_sofware' };
-	}else{
-		push @ret, { NOTICE => main::__('not_exist_software_package') };
-	}
-	return \@ret;	
-}
-
-sub set_sofware
-{
-	my $this   = shift;
-        my $reply  = shift;
-	my $hwconf = $reply->{dn};
-	my $hw_dn  = 'configurationKey='.$hwconf.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	my @ret;
-
-	# clean swPackages from hwconf ldap settings
-	my $addedSoftwares = $this->get_config_values($hw_dn, 'SWPackage', 'ARRAY');
-	if( $addedSoftwares->[0] ){
-		foreach my $hw_sw_value ( sort @$addedSoftwares ){
-			$this->delete_config_value( $hw_dn, 'SWPackage', "$hw_sw_value");
-		}
-	}
-	$addedSoftwares = $this->get_config_values($hw_dn, 'SWPackageCategory', 'ARRAY');
-        if( $addedSoftwares->[0] ){
-		foreach my $hw_sw_value ( sort @$addedSoftwares ){
-			$this->delete_config_value( $hw_dn, 'SWPackageCategory', "$hw_sw_value");
+	my $actPkgMsg = main::__('The currently assigned packages list:')."<BR>";
+	my $actualPkgs = $this->get_config_values( $hwDn, 'SWPackage', 'ARRAY');
+	if( defined $actualPkgs ){
+		foreach my $pkgDn ( sort @$actualPkgs ){
+			my $pkgName = $this->get_attribute( $pkgDn, 'configurationKey');
+			my $pkgCategory = $this->get_config_value( $pkgDn, 'pkgCategory');
+			$actPkgMsg .= $pkgName." --&gt; ".$pkgCategory."<BR>";
 		}
 	}
 
-	# insert swPackages to hwconf ldap settings
-	foreach my $category ( keys %{$reply->{categories}})
+	my @pkgFilter = ( 'pkgFilter' );
+	push @pkgFilter, { badhead => [ '' ] };
+	push @pkgFilter, { line => [ 'pkgFilter',
+					{ pkgNameForFilter => '*' },
+					{ name => 'pkgFilter', value => main::__('pkgFilter'), attributes => [ type => 'action' ] },
+					{ dn   => $hw },
+			]};
+
+	my @category = ( 'category' );
+	push @category, { head => [ 'myCheckBox', 'msghelp', 'pkgCategoryDetails', 'categoryContent', ''] };
+	foreach my $categoryName ( sort keys %{$tmpCategory} )
 	{
-		if( $reply->{categories}->{$category}->{inst} )
-		{
-			$this->add_config_value( $hw_dn, 'SWPackageCategory', "$category");
-			my $category_sw_list = $this->get_software_category($category);
-			foreach my $sw_dn ( sort keys %{$category_sw_list->{$category}} ){
-				my $sw_name = $category_sw_list->{$category}->{$sw_dn};
-				$this->add_config_value( $hw_dn, 'SWPackage', "$sw_name");
+		my $color = 'black';
+		my $msg   = '';
+		foreach my $pkgDn ( sort @{$tmpCategory->{$categoryName}->{pkgDn}}){
+			my $pkgInfo = $this->getPkgInfo($pkgDn);
+			if( $pkgInfo->{pkgWpkgXmlError} or $pkgInfo->{pkgInstSrcError} ){
+				$color = 'red';
+				$msg .= "<B>".$pkgInfo->{pkgName}.":</B><BR>";
+			}
+			if( $pkgInfo->{pkgWpkgXmlError} ){
+				$msg .= $pkgInfo->{pkgWpkgXmlError}."<BR>";
+			}
+			if( $pkgInfo->{pkgInstSrcError} ){
+				$msg .= $pkgInfo->{pkgInstSrcError}."<BR>";
 			}
 		}
-	}
+		my $swPackages .= join("<BR>",@{$tmpCategory->{$categoryName}->{pkgName}});
+		my $firstPkg = $tmpCategory->{$categoryName}->{pkgName}->[0].", ...";
 
-
-	my $softwares = $this->get_config_values( $hw_dn, 'SWPackage', 'ARRAY' );
-	my $newsw = '';
-	foreach my $i ( @{$softwares}){
-		$newsw .= $i."<BR>";
-	}
-	my @ws = ( 'workstations' );
-	push @ws, { head => [ 'name', 'Installed Software', 'New Software', 'Install new Software' ] };
-	foreach my $room ($this->get_rooms()){
-		my $dn_room = $room->[0];
-		foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} ){
-			if( $this->check_config_value($dn_ws,'HW',$hwconf) ){
-				my $hostname = $this->get_attribute($dn_ws,'cn');
-				my $user_dn = $this->get_user_dn($hostname);
-				my $oldsw = '';
-				foreach my $i (sort @{$this->search_vendor_object_for_vendor( 'osssoftware', $user_dn)}){
-					my $sw_name = $this->get_attribute($i, 'configurationKey');
-					my $status  = $this->get_attribute($i, 'configurationValue');
-					$oldsw .= $sw_name."<BR>" if( $status eq 'installed');
-				}
-				push @ws, { line => [ $dn_ws, 
-							{ name => 'pcname',      value => $hostname, attributes => [type => 'label'] },
-							{ name => 'oldsw',       value => $oldsw,    attributes => [type => 'label'] },
-							{ name => 'newsw',       value => $newsw,    attributes => [type => 'label'] },
-							{ name => 'workstation', value => '1',       attributes => [type => 'boolean'] },
-						 ]};
-			}
+		my @line = ( "$categoryName" );
+		if( 'all' eq "$categoryName" ){
+			push @line, { name => 'myCheckBox', value => '', attributes => [ type => 'label' ] };
+		}else{
+			push @line, { name => 'myCheckBox', value => '', attributes => [ type => 'boolean' ] };
 		}
+		if( $msg ne '' ){
+			push @line, { name => 'msghelp', value => "", attributes => [ type => 'label', help => $msg ] };
+		}else{
+			push @line, { name => 'msghelp', value => "", attributes => [ type => 'label' ] };
+		}
+		push @line, { name => 'pkgCategoryDetails', value => main::__("$categoryName"), attributes => [ type => 'action', style => "color:".$color ] };
+		push @line, { name => 'categoryContent',    value => "$firstPkg",               attributes => [ type => 'label',  style => "color:".$color, help => "$swPackages" ] };
+		push @line, { dn => $hw };
+		push @category, { line => \@line };
 	}
 
-	push @ret, { subtitle => 'set_software_to_img' };
-	push @ret, { NOTICE => 'Software was added successfully to the hardware configuration.' };
-	push @ret, { action => 'cancel' };
-	if( scalar(@ws) > 2 ){
-		push @ret, { NOTICE =>  main::__('The software belonging to the hardware configuration was changed.')."<BR>".
-					main::__('Please, leave selected the PCs where do you wish to install the new software.') };
-		push @ret, { table  => \@ws };
-		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Start the install/uninstall command immediately.'] };
-		push @ret, { name => 'action',  value => 'realy_set_sofware', attributes => [ label => 'apply' ] };
-	}else{
-		push @ret, { NOTICE => 'There is no hardware configuration associated to the PCs bellow.' };
-	}
-	push @ret, { dn => $reply->{dn} };
+	my @ret;
+	push @ret, { subtitle => $hwDesc." / ".main::__("setPkgCategoryForHW") };
+	push @ret, { ERROR    => $reply->{error} }   if( exists($reply->{error}) );
+	push @ret, { NOTICE   => $reply->{warning} } if( exists($reply->{warning}) );
+	push @ret, { NOTICE   => $actPkgMsg } if( defined $actualPkgs );
+	push @ret, { label    => 'Package fileter' };
+	push @ret, { table    => \@pkgFilter };
+	push @ret, { label    => 'Category list' };
+	push @ret, { table    => \@category };
+	push @ret, { rightaction => 'setPkgsForHW' };
+	push @ret, { rightaction => 'applyChangesForWs' } if( defined $actualPkgs );
+	push @ret, { rightaction => 'back' };
+	push @ret, { rightaction => 'cancel' };
+	push @ret, { dn => $hw };
 	return \@ret;
 }
 
-sub realy_set_sofware
-{
-	my $this  = shift;
-	my $reply = shift;
-	my $hw_dn = 'configurationKey='.$reply->{dn}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
-	$reply->{hw} = $reply->{dn};
-	$this->install_default_software($reply, $reply->{sw_installing_now});
-}
-
-sub install_default_software
+sub pkgCategoryDetails
 {
 	my $this   = shift;
 	my $reply  = shift;
-	my $sw_installing_now = shift || 0;
-	my $hw_dn  = 'configurationKey='.$reply->{hw}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hw     = $reply->{category}->{$reply->{line}}->{dn};
+	my $hwDn   = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hwDesc = $this->get_attribute( $hwDn, 'description');
+	my $category = $reply->{line};
+	my $tmpCategory = $this->getPackageCategory($category);
 
-	my @ws_dns;
+	my $actPkgMsg = main::__('The currently assigned packages list:')."<BR>";
+	my $actualPkgs = $this->get_config_values( $hwDn, 'SWPackage', 'ARRAY');
+	if( defined $actualPkgs ){
+		foreach my $pkgDn ( sort @$actualPkgs ){
+			my $pkgName = $this->get_attribute( $pkgDn, 'configurationKey');
+			my $pkgCategory = $this->get_config_value( $pkgDn, 'pkgCategory');
+			$actPkgMsg .= $pkgName." --&gt; ".$pkgCategory."<BR>";
+		}
+	}
+
+	my @pkgFilter = ( 'pkgFilter' );
+	push @pkgFilter, { badhead => [ '' ] };
+	push @pkgFilter, { line => [ 'pkgFilter',
+					{ pkgNameForFilter => '*' },
+					{ name => 'pkgFilter', value => main::__('pkgFilter'), attributes => [ type => 'action' ] },
+					{ dn => $hw },
+			]};
+
+	my @swPackages = ( 'swPackages' );
+	foreach my $pkgDn ( sort @{$tmpCategory->{$category}->{pkgDn}} ){
+		my $is = 0;
+		if( defined $actualPkgs ){
+			foreach my $pkgDnCurrent ( sort @$actualPkgs ){
+				$is = 1 if( $pkgDn eq $pkgDnCurrent );
+			}
+		}
+		my $pkgInfo = $this->getPkgInfo($pkgDn);
+		my $pkgName = $pkgInfo->{pkgName};
+		my $pkgDescription = $pkgInfo->{pkgDescription};
+		my $pkgVersion = $pkgInfo->{pkgVersion};
+		my $swLicense = '<a href="'.$pkgInfo->{swLicense}.'" target="_blank">'.main::__('swLicense').'</a>';
+		my $color = 'black';
+		my $msg = '';
+		if( $pkgInfo->{pkgWpkgXmlError} or $pkgInfo->{pkgInstSrcError} ){
+		$color = 'red';
+			$msg .= "<B>".$pkgInfo->{pkgName}.":</B><BR>";
+		}
+		if( $pkgInfo->{pkgWpkgXmlError} ){
+			$msg .= $pkgInfo->{pkgWpkgXmlError}."<BR>";
+		}
+		if( $pkgInfo->{pkgInstSrcError} ){
+			$msg .= $pkgInfo->{pkgInstSrcError};
+		}
+		my @line = ("$pkgDn");
+		push @line, { name => 'myCheckBox',      value => $is, attributes => [ type => 'boolean' ] };
+		if( $msg ne '' ){
+			push @line, { name => 'msghelp', value => "",  attributes => [ type => 'label', help => $msg ] };
+		}else{
+			push @line, { name => 'msghelp', value => "",  attributes => [ type => 'label' ] };
+		}
+		push @line, { name => 'pkgName',        value => "$pkgName",        attributes => [ type => 'label', style => 'color:'.$color, help => "$pkgDescription" ] };
+		push @line, { name => 'pkgVersion',     value => "$pkgVersion",     attributes => [ type => 'label', style => 'color:'.$color ] };
+		push @line, { name => 'swLicense',      value => "$swLicense",      attributes => [ type => 'label', style => 'color:'.$color ] };
+		push @swPackages, { line => \@line };
+	}
+
+	my @ret;
+	push @ret, { subtitle => $hwDesc." / ".main::__("setPkgCategoryForHW")." / ".$reply->{line} };
+	push @ret, { ERROR    => $reply->{error} }   if( exists($reply->{error}) );
+	push @ret, { NOTICE   => $reply->{warning} } if( exists($reply->{warning}) );
+	push @ret, { NOTICE   => $actPkgMsg } if( defined $actualPkgs );
+	push @ret, { label    => 'Package fileter' };
+	push @ret, { table    => \@pkgFilter };
+	push @ret, { label    => 'Software list' };
+	push @ret, { table    => \@swPackages };
+	push @ret, { rightaction => 'setPkgsForHW' };
+	push @ret, { rightaction => 'applyChangesForWs' } if( defined $actualPkgs );
+	push @ret, { rightaction => 'back' };
+	push @ret, { rightaction => 'cancel' };
+	push @ret, { dn => $hw };
+	push @ret, { name => 'category_h', value => "$category", attributes => [ type => 'hidden' ] };
+	return \@ret;
+}
+
+sub setPkgsForHW
+{
+	my $this  = shift;
+	my $reply = shift;
+	my $hw    = $reply->{dn};
+	my $hwDn  = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+
+	my %tmpPkgs;
+	if(exists($reply->{category})){
+		foreach my $categoryName (sort keys %{$reply->{category}}){
+			next if( !$reply->{category}->{$categoryName}->{myCheckBox} );
+			my $tmpCategory = $this->getPackageCategory($categoryName);
+			foreach my $pkgDn ( sort @{$tmpCategory->{$categoryName}->{pkgDn}} ){
+				$tmpPkgs{$pkgDn} = 1;
+			}
+		}
+	}
+	if(exists($reply->{swPackages})){
+		foreach my $pkgDn (sort keys %{$reply->{swPackages}}){
+			if( $reply->{swPackages}->{$pkgDn}->{myCheckBox} ){
+				$tmpPkgs{$pkgDn} = 1;
+			}else{
+				$tmpPkgs{$pkgDn} = 0;
+			}
+		}
+	}
+
+	if( !%tmpPkgs ){
+		if( exists($reply->{category}) ){
+			$reply->{error} = main::__('Please select at least one package category!');
+			return $this->pkgCategory($reply);
+		}
+	}
+
+	foreach my $pkgDn ( sort keys %tmpPkgs ){
+		if( $tmpPkgs{$pkgDn} ){
+			$this->add_config_value( $hwDn, 'SWPackage', $pkgDn);
+		}else{
+			$this->delete_config_value( $hwDn, 'SWPackage', $pkgDn);
+		}
+	}
+
+	return $this->pkgCategory($reply);
+}
+
+sub pkgFilter
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $hw     = $reply->{pkgFilter}->{pkgFilter}->{dn}; 
+	my $hwDn   = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hwDesc = $this->get_attribute( $hwDn, 'description');
+	my $filter = lc($reply->{pkgFilter}->{pkgFilter}->{pkgNameForFilter});
+
+	my $actPkgMsg = main::__('The currently assigned packages list:')."<BR>";
+	my $actualPkgs = $this->get_config_values( $hwDn, 'SWPackage', 'ARRAY');
+	if( defined $actualPkgs ){
+		foreach my $pkgDn ( sort @$actualPkgs ){
+			my $pkgName = $this->get_attribute( $pkgDn, 'configurationKey');
+			my $pkgCategory = $this->get_config_value( $pkgDn, 'pkgCategory');
+			$actPkgMsg .= $pkgName." --&gt; ".$pkgCategory."<BR>";
+		}
+	}
+
+	my @pkgFilter = ( 'pkgFilter' );
+	push @pkgFilter, { badhead => [ '' ] };
+	push @pkgFilter, { line => [ 'pkgFilter',
+					{ pkgNameForFilter => '*' },
+					{ name => 'pkgFilter', value => main::__('pkgFilter'), attributes => [ type => 'action' ] },
+					{ dn => $hw },
+				]};
+
+	my @package = ( 'swPackages' );
+	my $allPackage = $this->getAllPackage(1);
+	foreach my $pkgDn ( sort keys %{$allPackage} )
+	{
+		my $pkgNameFilter = lc($allPackage->{$pkgDn}->{pkgName});
+		next if( $pkgNameFilter !~ /(.*)$filter(.*)/ );
+		my $is = 0;
+		if( defined $actualPkgs ){
+			foreach my $pkgDnCurrent ( sort @$actualPkgs ){
+				$is = 1 if( $pkgDn eq $pkgDnCurrent );
+			}
+		}
+		my $pkgName = $allPackage->{$pkgDn}->{pkgName};
+		my $pkgDescription = $allPackage->{$pkgDn}->{pkgDescription};
+		my $pkgVersion = $allPackage->{$pkgDn}->{pkgVersion};
+		my $swLicense = '<a href="'.$allPackage->{$pkgDn}->{swLicense}.'" target="_blank">'.main::__('swLicense').'</a>';
+		my $color = 'black';
+		my $msg = '';
+		if( $allPackage->{$pkgDn}->{pkgWpkgXmlError} or $allPackage->{$pkgDn}->{pkgInstSrcError} ){
+			$color = 'red';
+			$msg .= "<B>".$allPackage->{$pkgDn}->{pkgName}.":</B><BR>";
+		}
+		if( $allPackage->{$pkgDn}->{pkgWpkgXmlError} ){
+			$msg .= $allPackage->{$pkgDn}->{pkgWpkgXmlError}."<BR>";
+		}
+		if( $allPackage->{$pkgDn}->{pkgInstSrcError} ){
+			$msg .= $allPackage->{$pkgDn}->{pkgInstSrcError};
+		}
+		my @line = ("$pkgDn");
+		push @line, { name => 'myCheckBox',      value => $is, attributes => [ type => 'boolean' ] };
+		if( $msg ne '' ){
+			push @line, { name => 'msghelp', value => "",  attributes => [ type => 'label', help => $msg ] };
+		}else{
+			push @line, { name => 'msghelp', value => "",  attributes => [ type => 'label' ] };
+		}
+		push @line, { name => 'pkgName',        value => "$pkgName",        attributes => [ type => 'label', style => 'color:'.$color, help => "$pkgDescription" ] };
+		push @line, { name => 'pkgVersion',     value => "$pkgVersion",     attributes => [ type => 'label', style => 'color:'.$color ] };
+		push @line, { name => 'swLicense',      value => "$swLicense",      attributes => [ type => 'label', style => 'color:'.$color ] };
+		push @package, { line => \@line };
+	}
+
+	my @ret;
+	push @ret, { subtitle => $hwDesc." / ".main::__("pkgFilter") };
+	push @ret, { ERROR    => $reply->{error} }   if( exists($reply->{error}) );
+	push @ret, { NOTICE   => $reply->{warning} } if( exists($reply->{warning}) );
+	push @ret, { NOTICE   => $actPkgMsg } if( defined $actualPkgs );
+	push @ret, { label    => 'Package fileter' };
+	push @ret, { table    => \@pkgFilter };
+	push @ret, { label    => 'Software list' };
+	push @ret, { table    => \@package };
+	push @ret, { rightaction => 'setPkgsForHW' };
+	push @ret, { rightaction => 'applyChangesForWs' };
+	push @ret, { rightaction => 'back' };
+	push @ret, { rightaction => 'cancel' };
+	push @ret, { dn => $hw };
+	return \@ret;
+}
+
+sub applyChangesForWs
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $hw     = $reply->{dn};
+	my $hwDn   = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hwDesc = $this->get_attribute( $hwDn, 'description');
+
+	my $actPkgMsg = main::__('The currently assigned packages list:')."<BR>";
+	my $actualPkgs = $this->get_config_values( $hwDn, 'SWPackage', 'ARRAY');
+	if( defined $actualPkgs ){
+		foreach my $pkgDn ( sort @$actualPkgs ){
+			my $pkgName = $this->get_attribute( $pkgDn, 'configurationKey');
+			my $pkgCategory = $this->get_config_value( $pkgDn, 'pkgCategory');
+			$actPkgMsg .= $pkgName." --&gt; ".$pkgCategory."<BR>";
+		}
+	}
+
+	my @works  = ('workstations');
+        push @works, { line => [ 'all', { name =>  'all' }, { workstation => 0 } ] };
+	my $result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DHCP_BASE},
+					    scope  => 'sub',
+					    filter =>  '(&(objectClass=dhcpHost)(configurationValue=HW='.$hw.'))',
+					    attrs  => ['cn'],
+					);
+	my $RES = $result->as_struct;
+	foreach my $dn ( sort keys %$RES)
+	{
+		push @works, { line => [ $dn, { name => $RES->{$dn}->{cn}->[0] },{workstation => 0 }] };
+	}
+
+
+	my @ret;
+	push @ret, { subtitle => $hwDesc." / ".main::__("applyChangesForWs") };
+	push @ret, { ERROR    => $reply->{error} }   if( exists($reply->{error}) );
+	push @ret, { NOTICE   => $reply->{warning} } if( exists($reply->{warning}) );
+	push @ret, { NOTICE   => main::__('applyChangesForWsNotice') };
+	push @ret, { NOTICE   => $actPkgMsg } if( defined $actualPkgs );
+	push @ret, { label    => 'installNow' };
+	push @ret, { name     => 'installNow', value => 0, attributes => [ type => 'boolean' ] };
+	push @ret, { label    => 'workstations' };
+	push @ret, { table    => \@works };
+	push @ret, { rightaction => 'applyChangesForWsReally' };
+	push @ret, { rightaction => 'back' };
+	push @ret, { rightaction => 'cancel' };
+	push @ret, { dn => $hw };
+	return \@ret;
+}
+
+sub applyChangesForWsReally
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $installNow = $reply->{installNow};
+
+	$reply->{hw} = $reply->{dn};
+	my $msgInstallDefaultPkg = $this->installDefaultPkg($reply, $installNow);
+
+	my @ret;
+	push @ret, @{$msgInstallDefaultPkg};
+	push @ret, { action => 'cancel' };
+	return \@ret;
+}
+
+sub back
+{
+	my $this  = shift;
+	my $reply = shift;
+
+	if( $reply->{rightaction} eq 'applyChangesForWsReally' ){
+		return $this->pkgCategory($reply);
+	}
+	if( exists($reply->{swPackages}) ){
+		return $this->pkgCategory($reply);
+	}
+	if( exists($reply->{category}) ){
+		$reply->{line} = $reply->{dn};
+		return $this->editHW($reply);
+	}
+	return $this->default();
+}
+
+sub installDefaultPkg
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $installNow = shift || 0;
+	my $hw     = $reply->{hw};
+	my $hwDn   = 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
+	my $hwDesc = $this->get_attribute( $hwDn, 'description');
+
+	my @wsUserDns = ();
 	if( exists($reply->{workstations}) ){
 		if( $reply->{workstations}->{all}->{workstation} ){
 			my $result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DHCP_BASE},
 							    scope  => 'sub',
-							    filter =>  '(&(objectClass=dhcpHost)(configurationValue=HW='.$reply->{hw}.'))',
+							    filter =>  '(&(objectClass=dhcpHost)(configurationValue=HW='.$hw.'))',
 							    attrs  => ['cn'],
-							);
+						);
 			my $RES = $result->as_struct;
 			foreach my $dn ( sort keys %$RES){
 				my $hostname = $RES->{$dn}->{cn}->[0];
-				push @ws_dns, $this->get_user_dn($hostname);
+				push @wsUserDns, $this->get_user_dn($hostname);
 			}
 		}else{
 			foreach ( keys %{$reply->{workstations}} ){
 				next if ( $_ eq 'all' );
 				if( $reply->{workstations}->{$_}->{workstation} ){
 					my $hostname = $this->get_attribute($_,'cn');
-					push @ws_dns, $this->get_user_dn($hostname);
+					push @wsUserDns, $this->get_user_dn($hostname);
 				}
 			}
 		}
-	}else{
-		foreach my $room ($this->get_rooms())
-		{
-			my $dn_room = $room->[0];
-			foreach my $dn_ws (sort @{$this->get_workstations_of_room($dn_room)} )
-			{
-				if( $this->check_config_value($dn_ws,'HW',$reply->{hw}) )
-				{
-					my $hostname = $this->get_attribute($dn_ws,'cn');
-					push @ws_dns, $this->get_user_dn($hostname);
-				}
-			}
-		}
-		
 	}
-	#print Dumper(@ws_dns);
-
-	my $softwares = $this->get_config_values( $hw_dn, 'SWPackage', 'ARRAY' );
-	my @sw_name_list;
-	@sw_name_list = @{$softwares} if( ref($softwares) eq 'ARRAY');
-	#print Dumper(@sw_name_list);
-
-	my $result;
-	if(ref($softwares) eq 'ARRAY' ){
-		$result = $this->software_install_cmd(\@ws_dns, \@sw_name_list, $sw_installing_now);
+	if( !scalar(@wsUserDns) ){
+		$reply->{dn} = $hw;
+		$reply->{error} = main::__('Please, choose at least one workstation!');
+		return $this->applyChangesForWs($reply);
 	}
-	#print Dumper($result);
 
-	my $msg = $this->createSwInstallationStatusTable($result);
-	#print Dumper($msg);
-	return $msg;
-}
+	my $actualPkgs = $this->get_config_values( $hwDn, 'SWPackage', 'ARRAY');
+	if( ! defined $actualPkgs ){
+		$reply->{dn} = $hw;
+		$reply->{error} = main::__('Please, configure at least one default package!');
+		return $this->applyChangesForWs($reply);
+	}
+	my @selectedPkg;
+	foreach my $pkgDn ( sort @$actualPkgs ){
+		push @selectedPkg, $this->get_attribute( $pkgDn, 'configurationKey' );
+	}
 
-sub createSwInstallationStatusTable
-{
-	my $this   = shift;
-	my $result = shift;
+	my @wsList = ();
+	my $h = $this->makeInstallDeinstallCmd('install', \@wsUserDns, $actualPkgs );
+	foreach my $wsUserDn ( keys %{$h}){
+		my $wsUserUid = $this->get_attribute($wsUserDn, 'uid');
+		push @wsList, $wsUserUid;
+	}
+
+	if( $installNow and scalar(@wsList) ){
+		makeInstallationNow(\@wsList);
+	}
+
 	my @ret;
-
 	# Selected pc's and softwares
-	push @ret, { NOTICE => main::__('selected_computer: ')." ".$result->{selected_computer}."<BR>".main::__('selected_software: ')." ".$result->{selected_software} };
+	push @ret, { NOTICE => main::__('selected_workstation:')." ".join(', ', @wsList)."<BR>".main::__('selected_package:')." ".join(', ', @selectedPkg) };
 
-	# Missing sw requiremente
-	push @ret, { ERROR  => main::__('The following requirement packages are missing:')." <B>".$result->{missing_sw_list}."</B>" } if($result->{missing_sw_list});
-
-	# Install cmd 
-	my $inst_ok  = '';
-	my $inst_nok = '';
-	foreach my $pc (sort keys %{$result->{installation_scheduled}} ){
-		foreach my $sw (sort keys %{$result->{installation_scheduled}->{$pc}} ){
-			if( $result->{installation_scheduled}->{$pc}->{$sw} ){
-				$inst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
-			}else{
-				$inst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
-			}
-		}
-	}
-	push @ret, { NOTICE => main::__('Executable successfully install command in the following PCs:')."<BR>".$inst_ok } if($inst_ok);
-	push @ret, { ERROR  => main::__('Install command can not be executable successfully the following PCs, because there is no license key or have other problem:')."<BR>".$inst_nok } if($inst_nok);
-
-	# Deinstall cmd
-	my $deinst_ok  = '';
-	my $deinst_nok = '';
-	foreach my $pc (sort keys %{$result->{deinstallation_scheduled}} ){
-		foreach my $sw (sort keys %{$result->{deinstallation_scheduled}->{$pc}} ){
-			if( $result->{deinstallation_scheduled}->{$pc}->{$sw} ){
-				$deinst_ok  .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
-			}else{
-				$deinst_nok .= $pc."  &lt;----  ".$sw."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
-			}
-		}
-	}
-	push @ret, { NOTICE => main::__('Executable successfully deinstall command in the following PCs:')."<BR>".$deinst_ok } if($deinst_ok);
-	push @ret, { ERROR => main::__('Deinstall command can not be executable successfully the following PCs, because there is not installed:')."<BR>".$deinst_nok } if($deinst_nok);
+        # Missing sw requiremente
+#       push @ret, { ERROR  => main::__('The following requirement packages are missing:')." <B>".$result->{missing_sw_list}."</B>" } if($result->{missing_sw_list});
 
 	# Exists status
 	my $exist = '';
-        foreach my $pc (sort keys %{$result->{exists_status}} ){
-                foreach my $sw (sort keys %{$result->{exists_status}->{$pc}} ){
-			my $status = $result->{exists_status}->{$pc}->{$sw};
-                        $exist .= $pc."  &lt;----  ".$sw."  <B>(".main::__($status).")</B>, <BR>";
+	foreach my $wsUidDn ( sort keys %{$h} ){
+		my $wsName = $this->get_attribute( $wsUidDn, 'uid' );
+		foreach my $pkgDn ( sort keys %{$h->{$wsUidDn}} ){
+			next if(!exists($h->{$wsUidDn}->{$pkgDn}->{exist}));
+			my $swName = $this->get_attribute( $pkgDn, 'configurationKey' );
+			my $status = $h->{$wsUidDn}->{$pkgDn}->{exist};
+			$exist .= $wsName."  &lt;----  ".$swName."  <B>(".main::__($status).")</B>, <BR>";
+		}
+	}
+	push @ret, { NOTICE => main::__('There is an installation status for the selected computers and packages:')."<BR>".$exist } if($exist);
+
+	# Install cmd 
+	my $inst_ok  = '';
+        my $inst_nok = '';
+        my $remove_old_version = '';
+        foreach my $wsUidDn ( sort keys %{$h} ){
+                my $wsName = $this->get_attribute( $wsUidDn, 'uid' );
+                foreach my $pkgDn (sort keys %{$h->{$wsUidDn}->{install}} ){
+                        my $swName = $this->get_attribute( $pkgDn, 'configurationKey' );
+                        if ( exists($h->{$wsUidDn}->{install}->{$pkgDn}->{removefirst}) ){
+                                foreach my $pkgn ( sort @{$h->{$wsUidDn}->{install}->{$pkgDn}->{removefirst}}){
+                                        $remove_old_version .= $wsName."  ----&gt;  ".$pkgn."<BR>";
+                                }
+                        }elsif( $h->{$wsUidDn}->{install}->{$pkgDn}->{flag} ){
+                                $inst_ok  .= $wsName."  &lt;----  ".$swName."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+                        }else{
+                                $inst_nok .= $wsName."  &lt;----  ".$swName."  <B>(".main::__('installation_scheduled').")</B>, <BR>";
+                        }
                 }
         }
-        push @ret, { NOTICE => main::__('On the following PCs have the following command to be implemented:')."<BR>".$exist } if($exist);
+        push @ret, { NOTICE => main::__('installation_scheduled').":<BR>".$inst_ok } if($inst_ok);
+        push @ret, { ERROR  => main::__('Install command can not be executable successfully the following PCs, because there is no license key or have other problem:')."<BR>".$inst_nok } if($inst_nok);
+        push @ret, { ERROR  => main::__('Remove the following packages if you want to install the selected packages:')."<BR>".$remove_old_version } if($remove_old_version);
 
-	return \@ret;
+        # Deinstall cmd
+        my $deinst_ok  = '';
+        my $deinst_nok = '';
+        foreach my $wsUidDn ( sort keys %{$h} ){
+                my $wsName = $this->get_attribute( $wsUidDn, 'uid' );
+                foreach my $pkgDn (sort keys %{$h->{$wsUidDn}->{deinstall}} ){
+                        my $swName = $this->get_attribute( $pkgDn, 'configurationKey' );
+                        if( $h->{$wsUidDn}->{deinstall}->{$pkgDn}->{flag} ){
+                                $deinst_ok  .= $wsName."  ----&gt;  ".$swName."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+                        }else{
+                                $deinst_nok .= $wsName."  ----&gt;  ".$swName."  <B>(".main::__('deinstallation_scheduled').")</B>, <BR>";
+                        }
+                }
+        }
+        push @ret, { NOTICE => main::__('deinstallation_scheduled')."<BR>".$deinst_ok } if($deinst_ok);
+        push @ret, { ERROR => main::__('Deinstall command can not be executable successfully the following PCs, because there is not installed:')."<BR>".$deinst_nok } if($deinst_nok);
+
+        return \@ret;
 }
 
 1;

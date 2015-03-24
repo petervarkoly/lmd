@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
+#
 # itool.pl
 #
 
@@ -103,88 +103,6 @@ if( $action eq 'getDOMAIN' )
 
 =item
 Ex: 
-   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getINSTALLATIONS&IP=10.0.2.1" 
-=cut
-if( $action eq 'getINSTALLATIONS' )
-{
-        my $ip  = $cgi->param("IP");
-	my $packages = "";
-	
-        if( !defined $ip )
-        {
-           $ip  = $cgi->remote_addr();
-        }
-# print $cgi->header(-charset=>'utf-8');
-# print $cgi->start_html(-title=>'itool');
-        my $ws_dn = $oss->get_host($ip);
-	my $hostname = $oss->get_attribute($ws_dn,'cn');
-	my $ws_user_dn = $oss->get_user_dn($hostname);
-	$ws_user_dn = 'o=oss,'.$ws_user_dn;
-	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', "$ws_user_dn");
-	if( (defined $obj) and (scalar(@$obj) > 0) ){
-		my @sw_name_list = ();
-		foreach my $sw_user_dn ( @$obj ){
-			my $sw_name   = $oss->get_attribute($sw_user_dn,'configurationKey');
-			push @sw_name_list, $sw_name;
-		}
-		my $result_sw = $oss->get_requiremente_sw(\@sw_name_list);
-		# print Dumper($new_sw_list);
-
-		# set deinstall, install, other status priority
-		my @inst;
-		my @deinst;
-		my @others;
-		foreach my $sw_dn ( @{$result_sw->{sorted_sw_list}} ){ # It is important not to sorted.
-			my $sw_name    = $oss->get_attribute($sw_dn, 'configurationKey');
-			my $sw_user_dn = 'configurationKey='.$sw_name.',o=osssoftware,'.$ws_user_dn;
-			next if( !$oss->exists_dn($sw_user_dn) );
-			my $sw_status = $oss->get_attribute($sw_user_dn,'configurationValue');
-			if($sw_status eq 'installation_scheduled'){
-				push @inst, $sw_dn;
-			}elsif($sw_status eq 'deinstallation_scheduled'){
-				push @deinst, $sw_dn;
-			}else{
-				push @others, $sw_dn;
-			}
-		}
-		my @last_array = reverse(@deinst);
-		push @last_array, @inst;
-		push @last_array, @others;
-
-		# get install cmd
-		foreach my $sw_dn ( @last_array ){ # It is important not to sorted.
-			my $sw_name    = $oss->get_attribute($sw_dn, 'configurationKey');
-			my $sw_type    = $oss->get_config_value($sw_dn,'TYPE');
-			my $sw_user_dn = 'configurationKey='.$sw_name.',o=osssoftware,'.$ws_user_dn;
-			next if( !$oss->exists_dn($sw_user_dn) );
-			my $sw_status = $oss->get_attribute($sw_user_dn,'configurationValue');
-			my $sw_options_inst = '';
-			if ( $sw_status eq 'installation_scheduled' ){
-				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_INSTALLATION') || '-';
-			}elsif( $sw_status eq 'deinstallation_scheduled' ){
-				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_DEINSTALLATION') || '-';
-			}else{
-				$sw_options_inst = $oss->get_config_value($sw_dn,'OPTIONS_INSTALLATION') || '-';
-			}
-			my $tmp = cmd_pipe("ls /srv/itool/swrepository/$sw_name/*.msi");
-			$tmp =~ /^\/srv\/itool\/swrepository\/$sw_name\/(.*\.msi).*/;
-			my $installkit = $1;
-#			$sw_options_inst =~ s/PACKAGE/"I:\\swrepository\\$sw_name\\$installkit"/;
-			$sw_options_inst =~ s/PACKAGE/"\\\\install\\itool\\swrepository\\$sw_name\\$installkit"/;
-			$packages .= "getINSTALLATIONS\$".$sw_name."##".$sw_type."##".$sw_status."##".$sw_options_inst."\n";
-		}
-	}else{
-		$packages = "getINSTALLATIONS\$-";
-	}
-
-        print $cgi->header(-charset=>'utf-8');
-        print $cgi->start_html(-title=>'itool');
-        print $packages;
-        print $cgi->end_html();
-}
-
-=item
-Ex: 
    wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=admin&PASS=admin_passw&ACTION=insertDIFF&DIFFNAME=test_diff_name&DIFFDESC=Test Diff Description.&VERSION=3.2" 
 =cut
 if( $action eq 'insertDIFF' )
@@ -206,7 +124,7 @@ if( $action eq 'insertDIFF' )
 	   else
 	   {
 		$oss->create_vendor_object( $pc_dn, 'osssoftware', "$name", "NAME=$name");
-		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "DESCRITION=$description");
+		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "DESCRIPTION=$description");
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "VERSION=$version");
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "TYPE=DISKDIFF");
 		$oss->add_value_to_vendor_object( $pc_dn, 'osssoftware', "$name", "CATEGORIE=OSSPkg");
@@ -220,110 +138,442 @@ if( $action eq 'insertDIFF' )
         print $cgi->end_html();
 }
 
+
+=item
+======================================== NEW ================================================
+=cut
+
 =item
 Ex: 
-   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=admin&PASS=admin_passw&ACTION=setINSTALLATIONS&IP=172.16.2.1&SW_NAME=adobe&INST_STATUS=installed" 
-inst_status: installed, installation_failed, deinstalled
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=info-pc00&PASS=info-pc00&ACTION=getSwRepoInfo&IP=10.0.2.0" 
 =cut
-if( $action eq 'setINSTALLATIONS' )
+if( $action eq 'getSwRepoInfo' )
 {
-        my $ip      = $cgi->param("IP");
-	my $sw_name = $cgi->param("SW_NAME");
-	my $inst_status = $cgi->param("INST_STATUS");
-        my $msg = "-";
-	my %hash;
+	my $ip  = $cgi->param("IP");
+	$ip  = $cgi->remote_addr() if( !defined $ip );
 
-        if( !defined $ip )
-        {
-           $ip  = $cgi->remote_addr();
+	# get host name
+	my $wsName = "-";
+	my $wsDn = $oss->get_host($ip);
+	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	$wsName = $tmp if($tmp);
+
+	# get samba domain
+	my $sambaDomain = "-";
+	my $mesg = $oss->{LDAP}->search( base   => $oss->{LDAP_BASE},
+					  filter => "(&(objectClass=sambaDomain)(sambaDomainName=*))",
+					  scope   => 'one'
+					);
+	foreach my $entry ( $mesg->entries ){
+		$sambaDomain = $entry->get_value('sambaDomainName');
+	}
+
+	# get package install status
+	my %tmpHash;
+	my $userDn = $oss->get_user_dn($wsName);
+	my $wsUserDn = 'o=oss,'.$userDn;
+	my $allPackage = $oss->search_vendor_object_for_vendor( 'osssoftware', "ou=Computers,$oss->{LDAP_BASE}");
+	foreach my $pkgDn ( @$allPackage ){
+		my $pkgName = $oss->get_attribute( $pkgDn, 'configurationKey');
+		my $status = $oss->get_wsuser_pkg_status($userDn, $pkgName);
+
+		if( $status =~ /^(deinstallation_scheduled|deinstallation_failed|installation_scheduled|installation_failed|deinstalled_manual|installed)$/ )
+		{
+			push @{$tmpHash{$status}}, $pkgDn;
+		}else{
+			push @{$tmpHash{other}}, $pkgDn;
+                }
         }
 
-	if( defined $sw_name and defined $inst_status ){
-		my $ws_dn      = $oss->get_host($ip);
-		my $hostname   = $oss->get_attribute($ws_dn,'cn');
-		my $ws_user_dn = $oss->get_user_dn($hostname);
-		$ws_user_dn = 'o=oss,'.$ws_user_dn;
-		if( $inst_status eq 'deinstalled' ){
-			$oss->delete_vendor_object( "$ws_user_dn", 'osssoftware', $sw_name );
-			cmd_pipe("rm /srv/itool/swrepository/$sw_name/log/$hostname.log");
-			$msg = 'OK';
-		}elsif( ($inst_status eq 'installed') or ($inst_status eq 'installation_failed') or ($inst_status eq 'deinstallation_failed') ){
-			if( $oss->modify_vendor_object( "$ws_user_dn", 'osssoftware', "$sw_name", "$inst_status") eq undef ){
-				$msg = 'NOT_OK';
-			}else{
-				$msg = "OK";
+	# sort package
+	if( !exists($tmpHash{deinstallation_scheduled}) or !scalar($tmpHash{deinstallation_scheduled}) ){
+		$tmpHash{deinstallation_scheduled} = reverse($tmpHash{deinstallation_scheduled});
+	}
+	if( !exists($tmpHash{installation_scheduled}) or !scalar($tmpHash{installation_scheduled}) ){
+		$tmpHash{installation_scheduled} = $oss->sortPkg($tmpHash{installation_scheduled});
+	}
+
+	# get installed manual software
+	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', $wsUserDn );
+        if( defined $obj){
+                foreach my $k ( sort @$obj ){
+                        if( $k =~ /^configurationKey=(.*),o=osssoftware,$wsUserDn$/ ){
+                                my $tPkgN = $1;
+                                my $status = $oss->get_wsuser_pkg_status($userDn,$tPkgN);
+                                next if( $status ne 'installed_manual' );
+				push @{$tmpHash{installed_manual}}, $tPkgN;
 			}
 		}
-	}elsif( !defined $sw_name ){
-		$msg = "SW_NAME_IS_MISSING";
-	}elsif( !defined $inst_status ){
-		$msg = "INST_STATUS_IS_MISSING";
 	}
 
-        print $cgi->header(-charset=>'utf-8');
-        print $cgi->start_html(-title=>'itool');
-        print "setINSTALLATIONS $msg\n";
-        print $cgi->end_html();
+	my %hash;
+	my $i = 0;
+	my @cmds = ( 'deinstallation_scheduled', 'deinstallation_failed', 'installation_scheduled', 'installation_failed', 'deinstalled_manual', 'installed', 'other', 'installed_manual');
+	foreach my $cmd ( @cmds ){
+		next if( !exists($tmpHash{$cmd}) or !scalar($tmpHash{$cmd}) );
+		if( $cmd =~ /^installed_manual$/ ){
+			foreach my $tPkgN ( sort @{$tmpHash{$cmd}} ){
+				$i++;
+				my $pkgDn = "configurationKey=$tPkgN,o=osssoftware,$wsUserDn";
+				next if( ! $oss->exists_dn($pkgDn) );
+				$hash{$i}->{id}     = $tPkgN;
+				$hash{$i}->{status} = $oss->get_wsuser_pkg_status($userDn,$tPkgN);
+				$hash{$i}->{cmdinstall} = '';
+				$hash{$i}->{cmdremove}  = '';
+				$hash{$i}->{cmdreboot}  = '';
+				$hash{$i}->{cmdexecute} = '';
+				$hash{$i}->{swproductkey}  = $oss->get_config_value($pkgDn,'swProductKey');
+				$hash{$i}->{swdisplayname} = '';
+				$hash{$i}->{swfileexists}  = '';
+				$hash{$i}->{swlicensetype} = '';
+				$hash{$i}->{swlicensekey}  = '-';
+			}
+		}
+		else
+		{
+			foreach my $pkgDn ( @{$tmpHash{$cmd}} ){ # no sort
+				$i++;
+				my $pkgName = $oss->get_attribute( $pkgDn, 'configurationKey');
+				$hash{$i}->{id}     = $pkgName;
+				$hash{$i}->{status} = $oss->get_wsuser_pkg_status($userDn, $pkgName);
+				$hash{$i}->{cmdinstall} = $oss->get_config_value($pkgDn, 'cmdInstall');
+				$hash{$i}->{cmdremove}  = $oss->get_config_value($pkgDn, 'cmdRemove');
+				$hash{$i}->{cmdreboot}  = $oss->get_config_value($pkgDn, 'cmdReboot');
+				$hash{$i}->{cmdexecute} = $oss->get_config_value($pkgDn, 'cmdExecute');
+				$hash{$i}->{swproductkey}  = $oss->get_config_value($pkgDn, 'swProductKey');
+				$hash{$i}->{swdisplayname} = $oss->get_config_value($pkgDn, 'swDisplayName');
+				$hash{$i}->{swfileexists}  = $oss->get_config_value($pkgDn, 'swFileExists');
+				$hash{$i}->{swlicensetype} = $oss->get_config_value($pkgDn, 'pkgLicenseAllocationType');
+				$hash{$i}->{swlicensekey}  = '-';
+				my $result = $oss->{LDAP}->search( base => 'o=productkeys,'.$pkgDn , filter => "cValue=USED=$wsName" );
+				$hash{$i}->{swlicensekey} = $oss->get_config_value($result->entry(0)->dn(), 'PRODUCT_KEY') if( $result && $result->count());
+			}
+		}
+	}
+
+	# make xml 
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+	print "\r\n";                         # empty line is required between headers
+	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+	print '<itool>'."\n";
+	print ' <info hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+	foreach my $item (sort {$a<=>$b} keys %hash){
+		my $line = ' <package id="'.$hash{$item}->{id}.'">';
+		$line .= '<pkgStatus>'.$hash{$item}->{status}.'</pkgStatus>';
+		$line .= '<cmdInstall>'.$hash{$item}->{cmdinstall}.'</cmdInstall>';
+		$line .= '<cmdRemove>'.$hash{$item}->{cmdremove}.'</cmdRemove>';
+		$line .= '<cmdReboot>'.$hash{$item}->{cmdreboot}.'</cmdReboot>';
+		$line .= '<cmdExecute>'.$hash{$item}->{cmdexecute}.'</cmdExecute>';
+		$line .= '<swProductKey>'.$hash{$item}->{swproductkey}.'</swProductKey>';
+		$line .= '<swDisplayName>'.$hash{$item}->{swdisplayname}.'</swDisplayName>';
+		$line .= '<swFileExists>'.$hash{$item}->{swfileexists}.'</swFileExists>';
+		$line .= '<swLicenseType>'.$hash{$item}->{swlicensetype}.'</swLicenseType>';
+		$line .= '<swLicenseKey>'.$hash{$item}->{swlicensekey}.'</swLicenseKey>';
+		$line .= '</package>'."\n";
+		print $line;
+	}
+	print '</itool>';
 }
 
 =item
 Ex: 
-   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getPRODUCTKEY&IP=192.168.10.131&SW_NAME=msOfficeProfPlus2010x86" 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=info-pc00&PASS=info-pc00&ACTION=setPkgStatus&PKGNAME=XXXXV1.0&PKGSTATUS=installed&IP=10.0.2.0"
+pkgStatus: installed; deinstalled; installation_failed; deinstallation_failed; installed_manual; deinstalled_manual
 =cut
-if( $action eq 'getPRODUCTKEY' )
+if( $action eq 'setPkgStatus' )
 {
-	my $ip      = $cgi->param("IP");
-	my $sw_name = $cgi->param("SW_NAME");
-	my $prodkey = "";
+	my $ip = $cgi->param("IP");
+        $ip    = $cgi->remote_addr() if( !defined $ip );
+	my $pkgName   = $cgi->param("PKGNAME");
+	my $pkgStatus = $cgi->param("PKGSTATUS");
 
-	if( !defined $ip )
-	{
-		$ip  = $cgi->remote_addr();
+	# get host name
+	my $wsName = "-";
+	my $wsDn = $oss->get_host($ip);
+	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	$wsName = $tmp if($tmp);
+	my $userDn = $oss->get_user_dn($wsName);
+	my $wsUserDn = 'o=oss,'.$userDn;
+
+	# get samba domain
+	my $sambaDomain = "-";
+	my $mesg = $oss->{LDAP}->search( base   => $oss->{LDAP_BASE},
+					  filter => "(&(objectClass=sambaDomain)(sambaDomainName=*))",
+					  scope   => 'one'
+					);
+	foreach my $entry ( $mesg->entries ){
+		$sambaDomain = $entry->get_value('sambaDomainName');
 	}
-	my $ws_dn = $oss->get_host($ip);
-	my $hostname = $oss->get_attribute($ws_dn,'cn');
 
-	my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
-	if( $oss->exists_dn( $sw_dn )  ){
-                my $allocation_type = $oss->get_config_value($sw_dn, 'LICENSALLOCATIONTYPE');
-                my $result = $oss->{LDAP}->search( base => 'o=productkeys,'.$sw_dn , filter => "cValue=USED=$hostname" );
-                if( $result && $result->count())
+	# set status
+	if( $pkgStatus =~ /^deinstalled$/ ){
+		$oss->delete_vendor_object( "$wsUserDn", 'osssoftware', $pkgName );
+	}elsif( $pkgStatus =~ /^installed$/ ){
+		if($oss->check_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "*")){
+			$oss->modify_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}else{
+			$oss->create_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}
+	}elsif( $pkgStatus =~ /^installed_manual|deinstalled_manual$/ ){
+		if($oss->check_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "*")){
+			$oss->modify_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}else{
+			$oss->create_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}
+	}elsif( $pkgStatus =~ /^installation_failed|deinstallation_failed$/ ){
+		if($oss->check_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "*")){
+			$oss->modify_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}else{
+			$oss->create_vendor_object( "$wsUserDn", 'osssoftware', "$pkgName", "pkgStatus=$pkgStatus");
+		}
+	}
+
+	# get current pkg install status
+	my $currentStatus = '-';
+	my $restStatus = $oss->get_wsuser_pkg_status($userDn, $pkgName);
+	$currentStatus = $restStatus if( $restStatus );
+
+	# make xml 
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+	print "\r\n";                         # empty line is required between headers
+	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+	print '<itool>'."\n";
+	print ' <info hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+	print ' <package ';
+	print ' id="'.$pkgName.'"';
+	print ' currentstatus="'.$currentStatus.'"';
+	print ' sentstatus="'.$pkgStatus.'"';
+	print ' ip="'.$ip.'"';
+	print ' />'."\n";
+        print '</itool>';
+}
+
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=info-pc03&PASS=info-pc03&ACTION=setManualInstalledPkgStatus&NPKGNAME=XXXXV1.0&NPKGDESC=XXXXX&NPKGVER=1.0&NPKGMAN=www.ocss.ro&NPKGLIC=www.ocss.ro&NPKGPRODKEY=XXX&NPKGDISPLAY=XXXXXXtest&IP=10.0.2.0"
+
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl
+?USER=info-pc03
+&PASS=info-pc03
+&ACTION=setManualInstalledPkgStatus
+&NPKGNAME=XXXXV1.0
+&NPKGDESC=
+&NPKGVER=
+&NPKGMAN=
+&NPKGLIC=
+&NPKGPRODKEY=
+&NPKGDISPLAY=
+&IP=10.0.2.0"
+
+pkgStatus: installed; deinstalled; installation_failed; deinstallation_failed; installed_manual; deinstalled_manual
+=cut
+if( $action eq 'setManualInstalledPkgStatus' )
+{
+	my $ip = $cgi->param("IP");
+	$ip    = $cgi->remote_addr() if( !defined $ip );
+
+	my $pkgName    = $cgi->param("NPKGNAME");
+	my $pkgDesc    = $cgi->param("NPKGDESC");
+	my $pkgVersion = $cgi->param("NPKGVER");
+	my $pkgManufac = $cgi->param("NPKGMAN");
+	my $pkgLicense = $cgi->param("NPKGLIC");
+	my $pkgProdKey = $cgi->param("NPKGPRODKEY");
+	my $pkgDisplayName = $cgi->param("NPKGDISPLAY");
+	my $pkgUninstall   = $cgi->param("NPKGUNINSTALL");
+
+#	& "&NPKGNAME=" & newPkgName _
+#	& "&NPKGDESC=" & strDisplayName _
+#	& "&NPKGVER="  & strDisplayVersion _
+#	& "&NPKGMAN="  & strPublisher _
+#	& "&NPKGLIC="  & strURLInfoAbout _
+#	& "&NPKGPRODKEY="   & strProductKey _
+#	& "&NPKGDISPLAY="   & strDisplayName _
+#	& "&NPKGUNINSTALL=" & strUninstallString _
+
+	# get host name
+	my $wsName = "-";
+	my $wsDn = $oss->get_host($ip);
+	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	$wsName = $tmp if($tmp);
+
+	# get samba domain
+	my $sambaDomain = "-";
+	my $mesg = $oss->{LDAP}->search( base   => $oss->{LDAP_BASE},
+                                          filter => "(&(objectClass=sambaDomain)(sambaDomainName=*))",
+                                          scope   => 'one'
+                                        );
+	foreach my $entry ( $mesg->entries ){
+		$sambaDomain = $entry->get_value('sambaDomainName');
+	}
+
+	# make ws uid software install status ldap base
+	my $wsUidDn = $oss->get_user_dn($wsName); 
+        my $vbase = 'o=oss,'.$wsUidDn;
+        if( !$oss->exists_dn($vbase) )
+        {
+                my $result = $oss->{LDAP}->add( dn   => $vbase,
+                                                 attr => [
+                                                 objectclass => [ 'top', 'organization' ],
+                                                 o           => 'oss'
+                                                ]);
+                if( $result->code )
                 {
-                        my $licenckey = $oss->get_config_value($result->entry(0)->dn(), 'PRODUCT_KEY');
-                        $prodkey = $licenckey." ALLOCATION_TYPE ".$allocation_type;
+                        $oss->ldap_error($result);
+                        print STDERR "Error by creating $vbase\n";
+                        print STDERR $oss->{ERROR}->{code}."\n";
+                        print STDERR $oss->{ERROR}->{text}."\n";
                 }
+        }
+
+	my $addStatus = '';
+	if( !$oss->check_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgName=$pkgName") )
+	{
+		my $dn = $oss->create_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgName=$pkgName");
+		if( $oss->exists_dn($dn) )
+		{
+			$addStatus = 'successful';
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgStatus=installed_manual");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgDescription=$pkgDesc");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgVersion=$pkgVersion");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgManufacturer=$pkgManufac");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgLicense=$pkgLicense");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "swProductKey=$pkgProdKey");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "swDisplayName=$pkgDisplayName");
+
+			my $logPath  = '\\\\install\itool\swrepository\logs\%COMPUTERNAME%';
+			my $cmdInstall = 'wpkg.js /nonotify /quiet /install:#PKGNAME# /log_file_path:#LOGPATH# /logfilePattern:#PKGNAME#.log';
+			$cmdInstall =~ s/#PKGNAME#/$pkgName/g;
+			$cmdInstall =~ s/#LOGPATH#/$logPath/g;
+			my $cmdRemove  = 'wpkg.js /nonotify /quiet /remove:#PKGNAME#  /log_file_path:#LOGPATH# /logfilePattern:#PKGNAME#.log';
+			$cmdRemove  =~ s/#PKGNAME#/$pkgName/g;
+			$cmdRemove  =~ s/#LOGPATH#/$logPath/g;
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdInstall=$cmdInstall");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdRemove=$cmdRemove");
+			if( $pkgUninstall =~ /^MsiExec|MSIEXEC|msiexec(.*)/ ){
+				my $cmdSwInstall = 'MsiExec /q /norestart /i #PKGSOURCE# /l* #LOGPATH#\#PKGNAME#_inst.log';
+				my $cmdSwRemove  = $pkgUninstall;
+				$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwInstall=$cmdSwInstall");
+				$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwRemove=$cmdSwRemove");
+			}
+		}
+		else
+		{
+			$addStatus = 'unsuccessful';
+		}
+	}
+	else
+	{
+		$addStatus = 'exists';
 	}
 
-	print $cgi->header(-charset=>'utf-8');
-	print $cgi->start_html(-title=>'itool');
-	print "PRODUCTKEY $prodkey\n";
-	print $cgi->end_html();
+	# make xml 
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+	print "\r\n";                         # empty line is required between headers
+	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+	print '<itool>'."\n";
+	print ' <info hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+	print ' <package ';
+	print ' id="'.$pkgName.'"';
+	print ' ip="'.$ip.'"';
+	print ' currentstatus="installed_manual"';
+	print ' createstatus="'.$addStatus.'"';
+	print ' />'."\n";
+	print ' <pkgName>'.$pkgName.'</pkgName>'."\n";
+	print ' <pkgDescription>'.$pkgDesc.'</pkgDescription>'."\n";
+	print ' <pkgVersion>'.$pkgVersion.'</pkgVersion>'."\n";
+	print ' <pkgManufacturer>'.$pkgManufac.'</pkgManufacturer>'."\n";
+	print ' <pkgLicense>'.$pkgLicense.'</pkgLicense>'."\n";
+	print ' <swProductKey>'.$pkgProdKey.'</swProductKey>'."\n";
+	print ' <swDisplayName>'.$pkgDisplayName.'</swDisplayName>'."\n";
+	print ' <swUninstallStr>'.$pkgUninstall.'</swUninstallStr>'."\n";
+	print '</itool>';
+
 }
 
 =item
 Ex: 
-   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getPRODUCTID&SW_NAME=AdobeReaderV11.0.04.DE" 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=info-pc00&PASS=info-pc00&ACTION=setClientScriptStatus&STATUS=is_running&IP=10.0.2.0"
+STATUS=is_running|is_not_running
+PKGNAME=XXXV1.0
 =cut
-if( $action eq 'getPRODUCTID' )
-{
-	my $ip        = $cgi->param("IP");
-	my $sw_name   = $cgi->param("SW_NAME");
-	my $productid = "";
+if( $action eq 'setClientScriptStatus' ){
+	my $ip = $cgi->param("IP");
+	$ip    = $cgi->remote_addr() if( !defined $ip );
+	my $status  = $cgi->param("STATUS");
+	my $pkgName = $cgi->param("PKGNAME");
 
-	if( !defined $ip )
-	{
-		$ip  = $cgi->remote_addr();
+	# get host name
+	my $wsName = "-";
+	my $wsDn = $oss->get_host($ip);
+	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	$wsName = $tmp if($tmp);
+	my $userDn = $oss->get_user_dn($wsName);
+	my $wsUserDn = 'o=oss,'.$userDn;
+
+	# get samba domain
+	my $sambaDomain = "-";
+	my $mesg = $oss->{LDAP}->search(base   => $oss->{LDAP_BASE},
+					filter => "(&(objectClass=sambaDomain)(sambaDomainName=*))",
+					scope   => 'one'
+				);
+	foreach my $entry ( $mesg->entries ){
+		$sambaDomain = $entry->get_value('sambaDomainName');
 	}
-	my $ws_dn = $oss->get_host($ip);
-	my $hostname = $oss->get_attribute($ws_dn,'cn');
 
-	my $sw_dn = "configurationKey=$sw_name,o=osssoftware,".$oss->{SYSCONFIG}->{COMPUTERS_BASE};
-	if( $oss->exists_dn( $sw_dn )  ){
-		$productid = $oss->get_config_value($sw_dn, 'PRODUCT_ID');
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print '<itool>'."\n";
+        print ' <info hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+
+	if( $status =~ /^(is_running|is_not_running)$/){
+		my $statusPkgUserDn = 'configurationKey='.$pkgName.',o=osssoftware,o=oss,'.$userDn;
+#		print " <aaa>$statusPkgUserDn</aaa>\n";
+		if( $status eq 'is_running'  ){
+#			print " <aaa>is_running</aaa>\n";
+			if( !$oss->exists_dn($statusPkgUserDn) ){
+#				print " <aaa>not exists_dn</aaa>\n";
+				$oss->create_vendor_object( $wsUserDn, 'osssoftware', "$pkgName", "runStatus=running");
+			}else{
+#				print " <aaa>exists_dn</aaa>\n";
+				$oss->set_config_value( $statusPkgUserDn, 'runStatus', "running");
+			}
+		}elsif( $status eq 'is_not_running' ){
+#			print " <aaa>is_not_running</aaa>\n";
+			if( $oss->exists_dn($statusPkgUserDn) ){
+#				print " <aaa>exists_dn</aaa>\n";
+				if( $oss->check_config_value( $statusPkgUserDn, 'pkgStatus', '(.*)') ){
+#					print " <aaa>pkgStatus is</aaa>\n";
+					$oss->delete_config_value( $statusPkgUserDn, 'runStatus', "running");
+				}else{
+#					print " <aaa>pkgStatus is not</aaa>\n";
+					$oss->delete_vendor_object( $wsUserDn, 'osssoftware', $pkgName );
+				}
+			}
+		}
+	}elsif( $status =~ /^(client_running|client_not_running)$/ ){
+		print " <aaa>client_running|client_not_running</aaa>\n";
+		if( $status eq 'client_running' ){
+			print " <aaa>client_running</aaa>\n";
+			if( ! $oss->check_vendor_object( $wsUserDn, 'ossclientstatus', "ClientStatus", "*") ){
+				print " <aaa>check_vendor_object nem igaz</aaa>\n";
+				$oss->create_vendor_object( $wsUserDn, 'ossclientstatus', 'ClientStatus', 'running');
+			}
+		}elsif( $status eq 'client_not_running' ){
+			print " <aaa>client_not_running</aaa>\n";
+			$oss->delete_vendor_object( $wsUserDn, 'ossclientstatus', 'ClientStatus' );
+			my $mesg = $oss->{LDAP}->delete( 'o=ossclientstatus,'.$wsUserDn );
+			
+		}
 	}
 
-	print $cgi->header(-charset=>'utf-8');
-	print $cgi->start_html(-title=>'itool');
-	print "PRODUCTID##$productid\n";
-	print $cgi->end_html();
+
+
+	# make xml 
+#	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+#	print "\r\n";                         # empty line is required between headers
+#	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+#	print '<itool>'."\n";
+#	print ' <info hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+	print '</itool>';
 }
