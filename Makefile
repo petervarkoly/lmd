@@ -10,6 +10,7 @@ NRELEASE	= $(shell echo $(RELEASE) + 1 | bc )
 HERE		= $(shell pwd)
 PACKAGE		= lmd
 DATE            = $(shell date +%Y-%m-%d)
+SUBS		= Makefile alibs enhance_translation.pl helper images itool.pl jk.conf lang lmd.pl ossadmin.war *.lmd sql tools ossmobile*
 
 install:
 	#Are all requierd packages installed?
@@ -57,7 +58,7 @@ installalibs:
 tar:
 	if [ -e lmd ]; then rm -rf lmd; fi
 	mkdir lmd
-	cp -rp Makefile alibs enhance_translation.pl helper images itool.pl jk.conf lang lmd.pl ossadmin.war *.lmd sql tools lmd
+	cp -rp $(SUBS) lmd
 	find lmd \( -not -regex "^.*\.git\/.*" -a -not -regex "^.*\.svn\/.*" \) -xtype f > files; \
 	    tar jcpf $(PACKAGE).tar.bz2 -T files;
 	rm files
