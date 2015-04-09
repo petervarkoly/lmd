@@ -26,7 +26,7 @@ install:
 	mkdir -p $(DESTDIR)/etc/apache2/vhosts.d/oss-ssl/
 	mkdir -p $(DESTDIR)/var/adm/fillup-templates/
 	mkdir -p $(DESTDIR)/usr/share/oss/tools
-	mkdir -p $(DESTDIR)/srv/www/cgi-bin/
+	mkdir -p $(DESTDIR)/srv/www/{cgi-bin,admin/images}
 	install -m 644 ossadmin.war   $(TOMCATROOT)
 	install -m 700 lmd.pl      $(DESTDIR)/usr/sbin/
 	cp -a tools/*              $(LMDDIR)/tools/
@@ -35,10 +35,13 @@ install:
 	install -m 755 alibs/*sh   $(LMDDIR)/alibs
 	install -m 644 helper/*    $(LMDDIR)/helper
 	install -m 644 sql/*       $(LMDDIR)/sql
+	install -m 644 ossmobile.pm  $(LMDDIR)
+	install -m 644 ossmobile.css $(DESTDIR)/srv/www/admin/
+	install -m 644 images/*    $(DESTDIR)/srv/www/admin/images/
 	install -m 755 rc.lmd      $(DESTDIR)/etc/init.d/lmd
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/admin-ssl/
 	install -m 644 jk.conf     $(DESTDIR)/etc/apache2/vhosts.d/oss-ssl/
-	install -m 755 itool.pl    $(DESTDIR)/srv/www/cgi-bin/
+	install -m 755 itool.pl ossmobile.pl $(DESTDIR)/srv/www/cgi-bin/
 	install -m 755 enhance_translation.pl $(DESTDIR)/usr/share/oss/tools
 	if [ -e $(DESTDIR)/usr/sbin/rclmd ] ; then \
 	   rm $(DESTDIR)/usr/sbin/rclmd; \
@@ -51,13 +54,15 @@ installalibs:
 	install -m 644 alibs/*pm   $(LMDDIR)/alibs
 	install -m 755 alibs/*sh   $(LMDDIR)/alibs
 
-dist:
+tar:
 	if [ -e lmd ]; then rm -rf lmd; fi
 	mkdir lmd
 	cp -rp Makefile alibs enhance_translation.pl helper images itool.pl jk.conf lang lmd.pl ossadmin.war *.lmd sql tools lmd
 	find lmd \( -not -regex "^.*\.git\/.*" -a -not -regex "^.*\.svn\/.*" \) -xtype f > files; \
 	    tar jcpf $(PACKAGE).tar.bz2 -T files;
 	rm files
+
+dist:   tar
 	sed "s/@VERSION@/$(VERSION)/" $(PACKAGE).spec.in > $(PACKAGE).spec
 	sed -i "s/@RELEASE@/$(NRELEASE)/"  $(PACKAGE).spec
 	rm -rf lmd

@@ -102,9 +102,10 @@ my $MODULES	= {};
 my $LANG	= 'EN';
 my @DISABLED    = ();
 my %ATTRIBUTES  = ();
+
 #TODO Make it configrable
 my %ROLEMAP     = ( MUSICTEACHERS => 'teachers' , 'administration' => 'teachers', 'administration,sysadmins' => 'teachers,sysadmins' );
-
+my @MOBILEAPPS  = ( 'ManageYourself', 'MobileSite'  );
 
 #Parsing Command Line Parameter
 my %options = ();
@@ -127,7 +128,7 @@ unlink "/var/run/lmd.sock" if ( -e "/var/run/lmd.sock" && $ADDRESS eq 'unix' );
 srand;
 
 #Read some LMD settings from /etc/sysconfig/lmd
-my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB, $BAD_LOGIN_TIMEOUT ) = 
+my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB, $BAD_LOGIN_TIMEOUT, $MA ) = 
 	parse_file( "/etc/sysconfig/lmd", 
 	"LMD_APPLICATIONS_NOT_TO_ARCHIVE=",
        	"LMD_APPLICATIONS_TO_ARCHIVE=",
@@ -137,9 +138,14 @@ my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, 
        	"LMD_DB_USER=",
        	"LMD_DB_PW=",
 	"LMD_SAVE_PASSWORD_IN_DB=",
-	"LMD_BAD_LOGIN_TIMEOUT=");
+	"LMD_BAD_LOGIN_TIMEOUT=",
+	"LMD_MOBILE_APSS=");
 $ARCHIVE_REQUESTS = ( $ARCHIVE_REQUESTS eq 'yes' ) ? 1:0;
 my @CATEGORIES = split /,/,$ORDER;
+
+if( $MA ) {
+   @MOBILEAPPS = split /,/,$MA;
+}
 
 #Make DB Connection;
 if( ! $DBCON )
@@ -497,11 +503,7 @@ sub DeleteSessionDatas
 {
     my $var   = shift || 'default';
     my $ses   = shift || $SESSIONID;
-    my $sel   = $DBH->prepare("DELETE FROM sessiondata WHERE id='$ses' AND variable='$var'");
-    $sel->execute;
-    my $value = $sel->fetch();
-    return $value->[0];
-
+    $DBH->do("DELETE FROM sessiondata WHERE id='$ses' AND variable='$var'");
 }
 
 sub GetSessionDatas
@@ -511,8 +513,8 @@ sub GetSessionDatas
     my $sel   = $DBH->prepare("SELECT value FROM sessiondata WHERE id='$ses' AND variable='$var'");
     $sel->execute;
     my $value = $sel->fetch();
+    return undef if( ! defined $value->[0] );
     return $value->[0];
-
 }
 
 sub AddSessionDatas
@@ -672,7 +674,7 @@ sub StartTag
 	{
 	    RequestError('4') if( !defined $SESSIONID || $SESSIONID ne GetSessionValue('id'));
 	    my $diff = time - GetSessionValue('lastaction');
-	    RequestError('5') if( $diff  > $STIME );
+	    RequestError('5') if( $diff  > $STIME  or GetSessionValue('logoff') );
 	    #RequestError('6') if( $REMOTEIP ne GetSessionValue('ip'));
 	    RequestError('7') if( ! check_rights() );
             UpdateSessionTime();
@@ -820,11 +822,21 @@ sub EndTag
 	{
 	   $xreply =  login();
 	}
+	elsif( $ACTION eq 'logout' )
+	{
+	   $xreply =  logout();
+	}
 	elsif( $ACTION eq 'getMenu' )
 	{
 	   my $role = GetSessionValue('role');
 	   #Debug("Role $role");
 	   $xreply =  GetMenu($role); 
+	}
+	elsif( $ACTION eq 'getMobileMenu' )
+	{
+	   my $role = GetSessionValue('role');
+	   #Debug("Role $role");
+	   $xreply =  GetMobileMenu($role); 
 	}
 	elsif( -e '/var/adm/oss/oss_service' )
 	{
@@ -1129,6 +1141,24 @@ sub GetMenu
 	}
 	$writer->endTag("category");
     }
+    $writer->endTag("reply");
+    $writer->end();
+    return $output;
+}
+
+sub GetMobileMenu
+{
+    my $role  = shift;
+    my $output;
+    my $category = 'MOBILEAPPS';
+    my $writer = new XML::Writer(OUTPUT => \$output, ENCODING => "UTF-8", DATA_MODE => 1);
+    $writer->startTag("reply", name=>"getMenu", sessionID=>$SESSIONID, role=>"$role", result=> "0" );
+    $writer->startTag("category", name => $category, label => __($category,'GetMenu') );
+    foreach my $app ( @MOBILEAPPS )
+    {
+    	$writer->dataElement('application',$app, label => __($app,'GetMenu'));
+    }
+    $writer->endTag("category");
     $writer->endTag("reply");
     $writer->end();
     return $output;
@@ -1490,6 +1520,22 @@ sub translate($$)
     }
 }
 
+sub logout
+{
+   my $oss    = oss_base->new();
+   $oss->{LDAP}->modify( GetSessionValue('dn'), delete => { cvalue => "LOGGED_ON=".GetSessionValue('IP') } );
+   $oss->destroy();
+   $DBH->do("UPDATE sessions SET logoff='".time."' WHERE id='$SESSIONID'"); 
+   my $output;
+   my $writer = new XML::Writer(OUTPUT => \$output, ENCODING => "UTF-8", DATA_MODE => 1);
+   $writer->xmlDecl("UTF-8");
+   $writer->startTag("reply", name=>"logout", action=>"logout", sessionID=>$SESSIONID, result=> "4" );
+       $writer->dataElement("NOTICE","Session successfully closed.");
+   $writer->endTag("reply");
+   $writer->end();
+   return $output;
+}
+
 sub login
 {
     my $oss    = oss_base->new();
@@ -1618,6 +1664,7 @@ sub call_lmd
     }
     elsif( $ACTION eq 'UpdateSessionTime' )
     {
+	UpdateSessionTime();
     	$result = GetSessionValue('lastaction');
     }
     elsif( $ACTION eq 'trans' )

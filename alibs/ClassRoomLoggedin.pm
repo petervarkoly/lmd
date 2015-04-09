@@ -103,19 +103,19 @@ sub showRoomLoggedin
 	system("/usr/share/oss/tools/clean-up-sambaUserWorkstations.pl");
 	if($myroom or ($type eq "sysadmins_root"))
 	{
-		my $logged_users = $this->get_logged_users("$myroom");
-		my %lu = ();
-		foreach my $dn (keys %{$logged_users} )
-		{
-			$lu{$logged_users->{$dn}->{user_cn}} = $dn;
+		my $lu = {};
+		foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
+                {
+			$lu->{$logged_user->{user_cn}}->{user_dn}   = $logged_user->{user_dn}; 
+			$lu->{$logged_user->{user_cn}}->{user_name} = $logged_user->{user_name}; 
+			$lu->{$logged_user->{user_cn}}->{host_name} = $logged_user->{host_name}; 
 		}
-		foreach my $cn (sort keys %lu)
+		foreach my $cn (sort keys %$lu)
 		{
-			my $dn = $lu{$cn};
-			push @lines, { line => [ $dn, 
-						{ pc_name   => "$logged_users->{$dn}->{host_name}" },
-						{ user      => "$logged_users->{$dn}->{user_name}" },
-						{ user_name => "$logged_users->{$dn}->{user_cn}" }
+			push @lines, { line => [ $lu->{$cn}->{user_dn}, 
+						{ pc_name   => $lu->{$cn}->{host_name} },
+						{ user      => $lu->{$cn}->{user_name} },
+						{ user_name => $cn }
 					]};
 		}
 		push @ret, { table       => \@lines };
