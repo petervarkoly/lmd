@@ -80,6 +80,13 @@ sub default
 	}
 	push @sessiontimeout , '---DEFAULTS---', $hash{LMD_SESSION_TIMEOUT}->{value};
 
+        #LMD_BAD_LOGIN_TIMEOUT
+        my @badlogintimeot;
+        for my $num (1 .. 200){
+                push @badlogintimeot, $num;
+        }
+        push @badlogintimeot , '---DEFAULTS---', $hash{LMD_BAD_LOGIN_TIMEOUT}->{value};
+
 	#LMD_DISABLED_MODULES
 	my @disabled_modules;
 	my $tmp = `ls /usr/share/lmd/alibs/`;
@@ -95,6 +102,7 @@ sub default
 	push @ret, { name => 'LMD_ADDRESS', value => $hash{LMD_ADDRESS}->{value}, attributes => [ type => "string", style => "width:100px", help => "$hash{LMD_ADDRESS}->{help}.  $hash{LMD_ADDRESS}->{default_value}" ] };
 	push @ret, { name => 'LMD_PORT', value => $hash{LMD_PORT}->{value}, attributes => [ type => "string", style => "width:100px", help => "$hash{LMD_PORT}->{help}.  $hash{LMD_PORT}->{default_value}" ] };
 	push @ret, { name => 'LMD_SESSION_TIMEOUT', value => \@sessiontimeout, attributes => [ type => "popup", backlabel => main::__('minutes'), help => "$hash{LMD_SESSION_TIMEOUT}->{help}.  $hash{LMD_SESSION_TIMEOUT}->{default_value}" ] };
+        push @ret, { name => 'LMD_BAD_LOGIN_TIMEOUT', value => \@badlogintimeot, attributes => [ type => "popup", backlabel => main::__('seconds'), help => "$hash{LMD_BAD_LOGIN_TIMEOUT}->{help}.  $hash{LMD_BAD_LOGIN_TIMEOUT}->{default_value}" ] };
 	push @ret, { name => 'LMD_DISABLED_MODULES', value => \@disabled_modules, attributes => [ type => "list", size => '10', multiple => "true", help => "$hash{LMD_DISABLED_MODULES}->{help}.  $hash{LMD_DISABLED_MODULES}->{default_value}" ] };
 	push @ret, { name => 'LMD_CATEGORY_ORDER', value => $hash{LMD_CATEGORY_ORDER}->{value}, attributes => [ type => "string", style => "width:400px", help => "$hash{LMD_CATEGORY_ORDER}->{help}.  $hash{LMD_CATEGORY_ORDER}->{default_value}" ] };
 	push @ret, { name => 'LMD_USE_MENU_ICONS', value => [ 'yes', 'no', '---DEFAULTS---', $hash{LMD_USE_MENU_ICONS}->{value} ], attributes => [type => "popup", help => "$hash{LMD_USE_MENU_ICONS}->{help}.  $hash{LMD_USE_MENU_ICONS}->{default_value}" ] };
@@ -113,12 +121,7 @@ sub apply
 	$reply->{LMD_DISABLED_MODULES} =~ s/\n/,/g;
 
 	foreach my $item (keys %{$reply}){
-		next if($item eq 'NOTICE'); 
-		next if($item eq 'APPLICATION');
-		next if($item eq 'SESSIONID');
-		next if($item eq 'ACTION');
-		next if($item eq 'CATEGORY');
-		next if($item eq 'warning');
+		next if($item !~ /^LMD_/);
 
 		my $msg = '';
 		if( ($item eq 'LMD_ADDRESS') and ($reply->{$item} !~ /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/)){
