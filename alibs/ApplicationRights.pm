@@ -96,7 +96,28 @@ sub default
 					}
 					else
 					{
+						$tmp = substr( $path,0,length("roles/$role/$cat/$mod"));
+						if( "roles/$role/$cat/$mod" ne $tmp )
+						{
+							$apps   .= '    <dir label="'.main::__($mod)."\" path=\"roles/$role/$cat/$mod\"/>\n";
+							next;
+						}
 						$apps   .= '      <dir label="'.main::__($mod)."\" path=\"roles/$role/$cat/$mod\">\n";
+                                                my $ACLs = `grep 'main::isAllowed' /usr/share/lmd/alibs/$mod.pm`;
+                                                foreach my $ACL ( split /\n/, $ACLs )
+                                                {
+                                                        $ACL =~ /main::isAllowed\(\'([\w\.]+)\'\)/;
+							my $a = $1;
+							my $b = $1; $b =~ s/$mod\.//;
+							if( main::isDenied("r","$role","$a") )
+							{
+								$apps   .= '        <dir label="('.main::__($b).")\" path=\"roles/$role/$cat/$mod/$a\"/>\n";
+							}
+							else
+							{
+								$apps   .= '        <dir label="'.main::__($b)."\" path=\"roles/$role/$cat/$mod/$a\"/>\n";
+							}
+                                                }
 					}
 					$apps   .= "      </dir>\n";
 				}
