@@ -77,9 +77,8 @@ if [ -e /etc/sysconfig/schoolserver ]; then
    export HOME=/root;
    export USER=root;
    /bin/bash /usr/share/lmd/sql/create-sql.sh
-else
-   %{fillup_and_insserv -Y} 
 fi
+%{fillup_and_insserv -Y} 
 
 if [ -e /etc/cron.d/oss-virus-protection ]
 then
