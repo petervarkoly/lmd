@@ -30,6 +30,7 @@ sub interface
                 "refresh",
                 "closeInternet",
 		"openInternet",
+		"logoutAllUser",
 		"logoutUser"
         ];
 }
@@ -86,7 +87,7 @@ sub showWSLoggedin
 	my $cn     = $this->get_attribute($dn,'cn');
 
 	my @other  = ();
-	my @ret    = { NOTICE => sprintf( main::__('Hallo %s! Welcome on "%s"!'),$cn, $ws ) };
+	my @ret    = ({ NOTICE => sprintf( main::__('Hallo %s! Welcome on "%s"!'),$cn, $ws ) });
 	my $mesg = $this->{LDAP}->search( base    => $this->{SYSCONFIG}->{USER_BASE},
                                           scope   => 'sub',
                                           attrs   => ['uid','cn'],
@@ -186,7 +187,7 @@ sub showRoomLoggedin
 		elsif( scalar(@lines) > 1 )
 		{
                     push @ret, { action   => 'closeInternet' };
-		    push @ret, { name     => "action", value =>  "logoutUser",  attributes => [ label => "logout all" ] };
+		    push @ret, { action   => 'logoutAllUser' };
 		}
                 push @ret, { action   => 'refresh' };
         }
@@ -218,7 +219,7 @@ sub openInternet
 		$this->{LDAP}->modify( $logged_user->{user_dn} ,  add    => { configurationValue => "LOGGED_ON=$ip" } );
 	}
 	main::DeleteSessionDatas('LoggedOutUsers');
-	$this->default();
+	$this->default($reply, $reply->{rooms});
 }
 
 sub closeInternet
@@ -226,7 +227,7 @@ sub closeInternet
         my $this   = shift;
         my $reply  = shift;
 	my $mydn   = main::GetSessionValue('dn');
-	my $myroom = main::GetSessionValue('room');
+	my $myroom = $reply->{'rooms'};
 	my @users  = ();
         foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
         {
@@ -236,7 +237,7 @@ sub closeInternet
 		$this->clean_up_user_attributes($dn);
 	}
         main::AddSessionDatas(encode_base64(freeze(\@users)),'LoggedOutUsers');
-	$this->default();
+	$this->default($reply, $reply->{rooms});
 }
 
 sub logoutUser
@@ -249,18 +250,24 @@ sub logoutUser
 	{
 	   $this->clean_up_user_attributes($dn) if( $dn ne $mydn );
 	}
-	else
+	$this->default($reply, $reply->{rooms});
+}
+
+sub logoutAllUser
+{
+        my $this   = shift;
+        my $reply  = shift;
+	my $mydn   = main::GetSessionValue('dn');
+	foreach my $dn ( keys %{$reply->{logon_user}} )
 	{
-	   foreach my $dn ( keys %{$reply->{logon_user}} )
-	   {
-	      next if( $dn eq $mydn ); 
-	      $this->clean_up_user_attributes($dn);
-	   }
+	   next if( $dn eq $mydn ); 
+	   $this->clean_up_user_attributes($dn);
 	}
-	$this->default();
+	$this->default($reply, $reply->{rooms});
 }
 
 
+#Internal Soubtutine
 sub clean_up_user_attributes
 {
         my $this = shift;

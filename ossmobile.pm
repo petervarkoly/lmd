@@ -231,6 +231,8 @@ sub checkLogin
     addSession($SESSIONID,$NAME,$ROOM);
     $this->getMenu();
     sendRequest('<request name="default" application="MobileSite" sessionID="'.$SESSIONID.'" ip="'.$this->{CGI}->remote_addr.'"/>');
+    $this->{"CGI"}->param(-name=>'APPLICATION',-value=>'MobileSite');
+    $this->{"CGI"}->param(-name=>'ACTION',-value=>'default');
     $this->printMenu();
 }
 
@@ -252,7 +254,7 @@ sub printMenu
     my $params  = $this->{"CGI"}->Vars;
     my $sect    = $params->{'CATEGORY'};
     my $appl    = $params->{'APPLICATION'} || '';
-    my $act     = $params->{'ACTION'}      || 'default';
+    my $act     = $params->{'ACTION'}      || '';
     my $line	= '';
     my $table   = '';
     if( $params->{'SESSIONID'} )
@@ -271,15 +273,16 @@ sub printMenu
 		my @action = split /\+/, $key; 
 		if( $action[0] eq "action" )
 		{
-			$act    = $action[1];
+			$act    = $action[1]; chomp($act);
 			$line   = $action[2] || '';
 			$table  = $action[3] || '';
 		}
 	}
 
-        Debug("MY --- $request\n");
         my $writer = new XML::Writer(OUTPUT => \$request, ENCODING => "UTF-8", DATA_MODE => 1);
-        $writer->startTag("request", name=>$act, application=>$appl, line=>$line, table=>$table, sessionID=>$SESSIONID, ip=>$this->{CGI}->remote_addr(), result=> "0" );
+Debug( "name=>$act, application=>$appl, sessionID=>$SESSIONID , ip=>".$this->{CGI}->remote_addr()."\n");
+        $writer->startTag("request", name=>$act, application=>$appl, table=>"$table", line=>"$line", sessionID=>$SESSIONID, ip=>$this->{CGI}->remote_addr() );
+#        $writer->startTag("request", name=>$act, application=>"MobileSite", table=>"$table", line=>"$line", sessionID=>$SESSIONID);
 
         foreach my $key ( keys %{$params} )
 	{
@@ -331,8 +334,8 @@ sub printMenu
 	Debug($request);
         sendRequest($request);
     }
-    print DEBUGH "MENU:".Dumper($MENU) if $DEBUG;
-
+    Debug("MENU:".Dumper($MENU));
+    Debug("CONTENT:".Dumper($CONTENT));
     my $colspan = $RIGHTACTIONS ? 3: 2 ;
     print $CGI->header(-type=>'text/html',-charset=>'utf-8');
     print $CGI->start_html(-title=>$APPNAME, -align=>"center", -style =>{'src'=>'/ossmobile.css'} );
@@ -674,6 +677,7 @@ sub EndTag
     {
 	if( $IS_TABLE )
 	{
+	   $HTML .=$CGI->hidden( -name=>"LINENAME+$LINE_NAME+$TABLE_NAME",-value=>1);
 	   $TABLE   .= $CGI->Tr({-class=>"ContentTableLine"},$HTML);
 	}
 	else
