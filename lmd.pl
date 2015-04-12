@@ -1869,7 +1869,7 @@ sub oss_service
     $writer->startTag('label', @attributes);
     $writer->cdata('Your server is in service state');
     $writer->endTag('label');
-    if( $role =” /sysadmins/ ) {
+    if( $role =~ /sysadmins/ ) {
         @attributes = ( 'type' , 'text' );
         $writer->startTag('message', @attributes);
         $writer->cdata($value);
