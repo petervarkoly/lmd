@@ -33,7 +33,6 @@ binmode STDOUT, ':encoding(UTF-8)';
 
 $ENV{LANG}="de_DE.UTF-8";
 $ENV{LC_ALL}="de_DE.UTF-8";
-print STDERR Dumper(\%ENV);
 
 my $DEBUG	= 1;
 my $DEBUGFILE	= "/tmp/log.ossmobile";
@@ -230,7 +229,6 @@ sub checkLogin
     my $ROOM = $1 || "";
     addSession($SESSIONID,$NAME,$ROOM);
     $this->getMenu();
-    sendRequest('<request name="default" application="MobileSite" sessionID="'.$SESSIONID.'" ip="'.$this->{CGI}->remote_addr.'"/>');
     $this->{"CGI"}->param(-name=>'APPLICATION',-value=>'MobileSite');
     $this->{"CGI"}->param(-name=>'ACTION',-value=>'default');
     $this->printMenu();
