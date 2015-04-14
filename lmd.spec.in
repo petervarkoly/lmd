@@ -107,8 +107,9 @@ fi
 /etc/init.d/lmd
 /usr/sbin/lmd.pl
 /usr/share/oss/tools/enhance_translation.pl
-/srv/www/admin/images/top_bgimage.jpg
 /srv/www/admin/ossmobile.css
+%dir /srv/www/admin/images/
+/srv/www/admin/images/top_bgimage.jpg
 
 %files web
 %defattr(-,root,root)
