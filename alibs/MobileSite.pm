@@ -131,7 +131,6 @@ sub showRoomLoggedin
                 push @rooms, '---DEFAULTS---', $myroom;
                 if($myroom){
                         push @ret, { subtitle => "$room_name"};
-                        push @ret, { NOTICE => main::__("You can see in the displayed list all currently logged in users.<br>Press \"refresh\" to check again.") };
                 }
                 push @ret, { rooms => \@rooms },
         }
@@ -143,7 +142,6 @@ sub showRoomLoggedin
         {
 
                 push @ret, { subtitle => "$room_name"};
-                push @ret, { NOTICE => main::__("You can see in the displayed list all currently logged in users. Press \"refresh\" to check again.")};
         }
 
         if($myroom or ($type eq "sysadmins_root"))
