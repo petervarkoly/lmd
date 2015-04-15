@@ -229,6 +229,7 @@ sub checkLogin
     my $ROOM = $1 || "";
     addSession($SESSIONID,$NAME,$ROOM);
     $this->getMenu();
+#    sendRequest('<request name="default" application="MobileSite" sessionID="'.$SESSIONID.'" ip="'.$this->{CGI}->remote_addr.'"/>');
     $this->{"CGI"}->param(-name=>'APPLICATION',-value=>'MobileSite');
     $this->{"CGI"}->param(-name=>'ACTION',-value=>'default');
     $this->printMenu();
@@ -255,6 +256,7 @@ sub printMenu
     my $act     = $params->{'ACTION'}      || '';
     my $line	= '';
     my $table   = '';
+    my $apps    = 0;
     if( $params->{'SESSIONID'} )
     {
         $SESSIONID  = $params->{'SESSIONID'};
@@ -360,6 +362,7 @@ Debug( "name=>$act, application=>$appl, sessionID=>$SESSIONID , ip=>".$this->{CG
 		{
 			foreach my $application ( @{$MENU->{$section}})
 			{
+				$apps = $apps+1;
 				if( $application eq $appl )
 				{
 				     $main_menu .= $CGI->Tr({}, $CGI->td({-class=>'ActivSubMenuItem'},
@@ -379,6 +382,7 @@ Debug( "name=>$act, application=>$appl, sessionID=>$SESSIONID , ip=>".$this->{CG
 			$sub_menu .= $CGI->start_Tr({-class=>'SubMenuHeader'});
 			foreach my $application ( @{$MENU->{$section}})
 			{
+				$apps = $apps+1;
 				if( $application eq $appl )
 				{
 				     $sub_menu .= $CGI->td({-class=>'ActivSubMenuItem'},
@@ -414,7 +418,9 @@ Debug( "name=>$act, application=>$appl, sessionID=>$SESSIONID , ip=>".$this->{CG
 	    print         $CGI->end_Tr();
     }  
     print         $CGI->start_Tr();
-    print             $CGI->td({-class=>'MainMenuContent', -align=>"left", -valign=>"top"},$main_menu);
+    if( $apps > 1 ) {
+    	print             $CGI->td({-class=>'MainMenuContent', -align=>"left", -valign=>"top"},$main_menu);
+    }
     print             $CGI->td({-class=>'MainContent',     -align=>"left", -valign=>"top"},
 				$CGI->start_table({-class=>'ContenContainer', -align=>"left", -valign=>"top" }).
 					$CGI->Tr($CGI->td({class=>'ApplicationTitle',colspan=>$colspan},$TITLE)).
@@ -689,7 +695,7 @@ sub EndTag
     }
     elsif( $v2 eq 'table' )
     {
-	$CONTENT .= $CGI->Tr($CGI->td({-colspan=>2}, $CGI->start_table({-class=>"ContentTable",-border=>1}).$CGI->Tr($HEADER).$TABLE.$CGI->end_table()))."\n";
+	$CONTENT .= $CGI->Tr($CGI->td({-colspan=>2}, $CGI->start_table({-class=>"ContentTable",-border=>0}).$CGI->Tr($HEADER).$TABLE.$CGI->end_table()))."\n";
         $IS_TABLE = 0;
         $TABLE    = '';
 	$TABLE_NAME = '';
