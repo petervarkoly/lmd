@@ -45,7 +45,7 @@ a.HeadMenuItem {
 /* TABLES '*/
 table.AdminBorder {
 	border-color: #295fa8;
-        border-width: 2px;
+        border-width: 0px;
         border-style: solid;
 	width:  700px;
 	height: 500px;
