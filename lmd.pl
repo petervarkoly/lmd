@@ -892,7 +892,15 @@ sub EndTag
 			    PROXYSERVER_LOCAL => $PROXYSERVER_LOCAL
 		    	  };
 		require "$APPLICATION.pm";
-		my $obj   = undef; eval { $obj = $APPLICATION->new($connect); };
+		my $obj   = undef;
+		if( defined $CAPABILITIES->{$APPLICATION}->{sudo}->[0] )
+		{
+			eval { $obj = $APPLICATION->new(); };
+		}
+		else
+		{
+			eval { $obj = $APPLICATION->new($connect); };
+		}
 		if( ! defined $obj )
 		{
 		    ReturnError(['CAN_NOT_CREATE_OBJECT',__('Can not create the object: ','GLOBAL')."$APPLICATION"]);

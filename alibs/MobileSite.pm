@@ -40,6 +40,7 @@ sub getCapabilities
         return [
                 { title        => 'MobileSite' },
                 { type         => 'command' },
+                { sudo         => 1 },
                 { allowedRole  => 'root' },
                 { allowedRole  => 'sysadmins' },
                 { allowedRole  => 'students' },
@@ -96,14 +97,8 @@ sub showWSLoggedin
 	foreach my $e ( $mesg->entries )
 	{
 		next if( $dn eq $e->dn() );
-		push @other, { line => [ $e->dn , { uid => $e->get_value('uid') }, { cn => $e->get_value('cn') } ] };
-	}
-	if( scalar @other )
-	{
-	        my @tmp = ('others');
-		push @tmp, @other;
-		push @ret, { NOTICE => "You are not the only one, logged on on this workstation.<br>Notice this your teacher!" };
-		push @ret, { table => \@tmp };
+		push @other, { line => [ $e->dn , { user_name => $e->get_value('uid') }, { user => $e->get_value('cn') } ] };
+		$this->{LDAP}->modify( $e->dn ,  delete    => { configurationValue => "LOGGED_ON=$ip" } );
 	}
 	return \@ret;
 }
@@ -149,22 +144,13 @@ sub showRoomLoggedin
         {
                 foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
                 {
-			if( $role =~ /^root|sysadmins$/  && $this->is_teacher($logged_user->{user_dn}) )
+			if( $this->is_teacher($logged_user->{user_dn}) )
 			{
                         	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
                                                 { user_name => $logged_user->{user_cn} },
 						{ name      => "action", value =>  "logoutUser",  attributes => [ label => "logout" ] }
-                                        ]};
-			}
-			elsif( $this->is_teacher($logged_user->{user_dn}) and $mydn ne $logged_user->{user_dn} )
-			{
-                        	push @lines, { line => [ $logged_user->{user_dn},
-                                                { pc_name   => $logged_user->{host_name} },
-                                                { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
-                                                { user_name => $logged_user->{user_cn} },
-						{ message   => main::__("You can not logout this account.") }
                                         ]};
 			}
 			else
