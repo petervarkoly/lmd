@@ -96,13 +96,13 @@ sub showWSLoggedin
 	foreach my $e ( $mesg->entries )
 	{
 		next if( $dn eq $e->dn() );
-		push @other, { line => [ $e->dn , { uid => $e->get_value('uid') }, { cn => $e->get_value('cn') } ] };
+		push @other, { line => [ $e->dn , { user_name => $e->get_value('uid') }, { user => $e->get_value('cn') } ] };
 	}
 	if( scalar @other )
 	{
 	        my @tmp = ('others');
 		push @tmp, @other;
-		push @ret, { NOTICE => "You are not the only one, logged on on this workstation.<br>Notice this your teacher!" };
+		push @ret, { NOTICE => main::__("You are not the only one, logged on on this workstation.<br>Notice this your teacher!") };
 		push @ret, { table => \@tmp };
 	}
 	return \@ret;
