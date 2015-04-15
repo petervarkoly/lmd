@@ -49,7 +49,7 @@ sub getCapabilities
                 { order        => 50 },
                 { variable     => [ "rooms",                           [ type => "popup", label => 'Please choose a room:' ]]},
                 { variable     => [ "pc_name",                         [ type => "label" ]]},
-                { variable     => [ "message",                         [ type => "label" ]]},
+                { variable     => [ "message",                         [ type => "label", label => 'Message' ]]},
                 { variable     => [ "user_name",                       [ type => "label" ]]},
                 { variable     => [ "user",                            [ type => "label" ]]}
         ];
@@ -87,7 +87,7 @@ sub showWSLoggedin
 	my $cn     = $this->get_attribute($dn,'cn');
 
 	my @other  = ();
-	my @ret    = ({ NOTICE => sprintf( main::__('Hallo %s! Welcome on "%s"!'),$cn, $ws ) });
+	my @ret    = ({ NOTICE => sprintf( main::__('Hallo %s!<br>Welcome on "%s"!'),$cn, $ws ) });
 	my $mesg = $this->{LDAP}->search( base    => $this->{SYSCONFIG}->{USER_BASE},
                                           scope   => 'sub',
                                           attrs   => ['uid','cn'],
@@ -115,6 +115,7 @@ sub showRoomLoggedin
         my $type   = shift;
         my $myroom = shift || $this->get_room_by_name(main::GetSessionValue('room'));
         my $role   = main::GetSessionValue('role');
+        my $mydn   = main::GetSessionValue('dn');
         my @lines  = ('logon_user');
         my @ret    = ();
 
@@ -157,13 +158,13 @@ sub showRoomLoggedin
 						{ name      => "action", value =>  "logoutUser",  attributes => [ label => "logout" ] }
                                         ]};
 			}
-			elsif( $this->is_teacher($logged_user->{user_dn}) )
+			elsif( $this->is_teacher($logged_user->{user_dn}) and $mydn ne $logged_user->{user_dn} )
 			{
                         	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
                                                 { user      => $logged_user->{user_name}.'('.main::__('teachers').')' },
                                                 { user_name => $logged_user->{user_cn} },
-						{ message   => "You can not logout this account." }
+						{ message   => main::__("You can not logout this account.") }
                                         ]};
 			}
 			else
@@ -225,7 +226,7 @@ sub closeInternet
         my $this   = shift;
         my $reply  = shift;
 	my $mydn   = main::GetSessionValue('dn');
-	my $myroom = $reply->{'rooms'};
+	my $myroom = $reply->{'rooms'} || $this->get_room_by_name(main::GetSessionValue('room')) ;
 	my @users  = ();
         foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
         {

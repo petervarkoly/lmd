@@ -168,7 +168,7 @@ sub login
     print                 "&nbsp;";
     print             $CGI->end_td();
     print             $CGI->start_td({-valign=>"middle"});
-    print                 $CGI->submit(-class=>"button",-name=>'login', -value=>"Login");
+    print                 $CGI->submit(-class=>"CentreButton",-name=>'login', -value=>"Login");
 #    print                 $CGI->hidden(-name=>'APPLICATION', -value=>"WEB");
     print             $CGI->end_td();
     print         $CGI->end_Tr();

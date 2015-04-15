@@ -125,11 +125,13 @@ td.Actions {
 }
 
 td.ContentLabel {
+	font-size: 1.5em;
 	font-weight: bold;
 	text-align: right;
 }
 
 td.ContentValue {
+	font-size: 1.5em;
         margin:  10px;
 	text-align: left;
 }
@@ -138,10 +140,13 @@ td.MainContent {
 }
 
 input.CentreButton {
+	font-size: 1.5em;
 }
 
 input.BottomButton {
+	font-size: 1.5em;
 }
 
 input.RightButton {
+	font-size: 1.5em;
 }
