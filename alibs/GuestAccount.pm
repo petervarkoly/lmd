@@ -106,6 +106,7 @@ sub default
 		}
 
 		my @line = ( @$dn[$i] );
+		next if ( -e "/usr/share/oss/setup/deleting-guest-".$group->{cn}->[0] );
 		push @line, { name => 'name', value => $group->{cn}->[0], "attributes" => [ type => "label" ] };
 		push @line, { name => 'description', value => $group->{description}->[0], "attributes" => [ type => "label" ] };
 		push @line, { name => 'privategroup', value => $privategroup, "attributes" => [ type => "label" ] };
@@ -190,12 +191,13 @@ sub apply
 
 	my( $sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst )   = localtime(time);
         my $DateNow = sprintf('%4d-%02d-%02d',$year+1900,$mon+1,$mday);
+	my $CN = uc($reply->{cn});
 
 	if( $DateNow le $reply->{expirationdategroup} ){
 
 		# create group
 		my %GROUP = ();
-		$GROUP{cn} = uc($reply->{cn});
+		$GROUP{cn} = $CN;
 	        $GROUP{description} = $reply->{description};
 		$GROUP{grouptype} = 'guest';
 		$GROUP{role} = lc($reply->{cn});
@@ -266,27 +268,39 @@ sub apply
 
 		#create at
 		my $cmd = "at 23:59 $reply->{expirationdategroup}";
-                my $arg = "/usr/share/oss/setup/delete-guest-".uc($reply->{cn}).".pl";
+                my $arg = "/usr/share/oss/setup/delete-guest-".$CN.".pl";
                 my $tmp = cmd_pipe("$cmd", "$arg");
 
                 # create /usr/share/oss/setup/delete-guest-<GroupName>.pl script
-                my $deletescripturl = "/usr/share/oss/setup/delete-guest-".uc($reply->{cn}).".pl";
+                my $deletescripturl = "/usr/share/oss/setup/delete-guest-".$CN.".pl";
                 open(FILE,"\> $deletescripturl") or die "Can't open $deletescripturl !\n";
-                my $deleteguestscript = "#!/usr/bin/perl\n\nBEGIN{ push".' @INC,"/usr/share/oss/lib/";'." }\n\nuse strict;\nuse oss_group;\nuse oss_base;\nuse oss_user;\nuse oss_utils;\nuse vars qw(".'@ISA'.");\n".'@ISA'." = qw(oss_group);\n\n";
-                $deleteguestscript .= "my ".'$base'." = oss_base->new();\nmy ".'@group'." = (\"$dng\");\nmy ".'$users =$base'."->search_users(\"*\",".'\@group'.");\n\nforeach my ".'$dnu (keys  %$users'."){\n   ".'my $connect->{withIMAP} = 1;'."\n   ".'my $user = oss_user->new($connect);'."\n   ".'$user->delete("$dnu");'."\n}\n\n";
-                $deleteguestscript .= "my ".'$this'." = shift;\nmy ".'$connect'." = shift || undef;\n".'$connect'."->{withIMAP} = 1;\nmy ".'$group'." = oss_group->new(".'$connect'.");\n\n".'$group->delete("'.$dng.'");'."\n\n";
-
-		my $contact = $this->get_attribute(main::GetSessionValue('dn'),'cn');
 		my $mailto = $this->get_attribute(main::GetSessionValue('dn'),'mail');
-		my $MAIL = 'SUBJECT="Delete one group an users"\'."\n".\'CONTACT="'.$contact.'"\'."\n".\'MAILFROM="admin@EXTIS-School.org"\'."\n".\'MAILTO="'.$mailto.'"';
-		my $TEXT = 'Delete in the '.uc($reply->{cn}).' Group and users';
+                my $deleteguestscript = '#!/usr/bin/perl
 
-		$deleteguestscript .= 'system(\'echo Delete in the '.uc($reply->{cn}).' Group and users|mail -s OSS: Delete one group an users -r admin@EXTIS-School.org '.$mailto.'\');'."\n";
+BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 
-		$deleteguestscript .= 'system(\'rm -r /etc/apache2/vhosts.d/oss-ssl/'.uc($reply->{cn}).".conf');\n";
-                $deleteguestscript .= "system('rmdir /home/".lc($reply->{cn})."');\n";
-                $deleteguestscript .= "system(\"unlink ".'/usr/share/oss/setup/delete-guest-'.uc($reply->{cn}).'.pl")';
+use strict;
+use oss_group;
+use oss_user;
+use oss_utils;
 
+system("touch /usr/share/oss/setup/deleting-guest-'.$CN.'");
+my $user = oss_user->new( { withIMAP=>1 } );
+my $users =$user->get_users_of_group("'.$dng.'");
+foreach my $dnu (@$users){
+   if ( $user->get_primary_group_of_user($dnu)  eq "'.$dng.'" ) {
+      $user->delete("$dnu");
+   }
+}
+
+my $group = oss_group->new( { withIMAP=>1 } );
+
+$group->delete("'.$dng.'");
+
+system(\'echo "Delete in the '.$CN.' Group and users"|mail -s "OSS: Delete one group an users" -r '.$mailto.' '.$mailto.'\');
+system("rm -r /etc/apache2/vhosts.d/oss-ssl/'.$CN.'.conf; rmdir /home/test; rm /usr/share/oss/setup/delete-guest-'.$CN.'.pl");
+system("rm /usr/share/oss/setup/deleting-guest-'.$CN.'");
+';
                 printf FILE $deleteguestscript;
                 close (FILE);
                 chmod(0755, $deletescripturl );
@@ -305,44 +319,8 @@ sub delete
         my $reply  = shift;
 	my $cn     = $this->get_attribute($reply->{line},'cn');
 	my $dn     = $reply->{line};
+        system('nohup /usr/share/oss/setup/delete-guest-'.uc($cn).'.pl &');
 
-        if( ! $dn )
-        {
-                return { TYPE    => 'ERROR',
-                         MESSAGE => ''
-                };
-        }
-
-	my @group = ($dn);
-        my $users =$this->search_users('*',\@group);
-
-        my $connect->{withIMAP} = 1;
-        my $user = oss_user->new($connect);
-        foreach my $dnu (keys  %$users){
-                if( !$user->delete("$dnu"))
-                {
-                        return {
-                                TYPE => 'ERROR',
-                                MESSAGE => $user->{ERROR}->{text}
-                        }
-                }
-        }
-	$user->destroy();
-
-	$this->make_delete_group_webdavshare( "$dn", "0" );
-        my $group = oss_group->new($connect);
-        if( !$group->delete($dn))
-        {
-                return {
-                        TYPE => 'ERROR',
-                        MESSAGE => $group->{ERROR}->{text}
-                }
-        }
-	$group->destroy();
-	if ( -d '/home/'.lc($cn) && lc($cn) ne '' ){
-		system( 'rmdir /home/'.lc($cn) );
-	}
-	system('rm /usr/share/oss/setup/delete-guest-'.uc($cn).'.pl');
         $this->default();
 }
 
