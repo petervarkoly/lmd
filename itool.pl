@@ -102,6 +102,73 @@ if( $action eq 'getDOMAIN' )
 }
 
 =item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=edv-pc02&PASS=edv-pc02&ACTION=getINSTALLATIONS&IP=10.0.2.2" 
+=cut
+
+if( $action eq 'getINSTALLATIONS' )
+{
+	my $ip  = $cgi->param("IP");
+	$ip  = $cgi->remote_addr() if( !defined $ip );
+	notDefinedOss() if( !defined $oss );
+
+	# get host name
+	my $wsName = "-";
+	my $wsDn = $oss->get_host($ip);
+	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	$wsName = $tmp if($tmp);
+
+	# get samba domain
+	my $sambaDomain = "-";
+	my $mesg = $oss->{LDAP}->search(base   => $oss->{LDAP_BASE},
+					filter => "(&(objectClass=sambaDomain)(sambaDomainName=*))",
+					scope  => 'one'
+					);
+	foreach my $entry ( $mesg->entries ){
+		$sambaDomain = $entry->get_value('sambaDomainName');
+	}
+
+	my $ossClientPkgDn = '';
+	my $ossClientVersion = '4.7.0';
+	my $mesg = $oss->{LDAP}->search(  base   => 'o=osssoftware,ou=Computers,'.$oss->{LDAP_BASE},
+					  scope  => 'one',
+					  filter => "configurationKey=OssClientInstallV*",
+					);
+	foreach my $entry ( sort $mesg->entries )
+	{
+		my $pkgDn = $entry->dn();
+		$pkgDn =~ /^(configurationKey=OssClientInstallV)(.*),o=osssoftware(.*)/;
+		if( $2 >= $ossClientVersion ){
+			$ossClientVersion = $2;
+			$ossClientPkgDn = $pkgDn;
+		}
+	}
+
+	if( $ossClientPkgDn ){
+		my $pkgName = $oss->get_attribute( $ossClientPkgDn, 'configurationKey');
+		my $cmd = '/usr/sbin/oss_control_client.pl';
+		$cmd .= ' --client="'.$wsName.'"';
+		$cmd .= ' --cmd=ExecuteCommandCmd';
+		$cmd .= ' --execfilename=cmd.exe';
+		$cmd .= ' --execworkdir="C:\Windows\System32"';
+		$cmd .= ' --execarg="/c';
+		$cmd .= ' net use W: \\\\\install\\itool /user:'.$sambaDomain.'\\'.$wsName.' '.$wsName;
+		$cmd .= ' &amp;&amp;';
+		$cmd .= ' \\\\\install\\itool\\swrepository\\'.$pkgName.'\OssClientSetup.exe /VERYSILENT /LOG=C:\windows\OssClientSetup_inst.log /TASKS=allowprinterdriversinstall,enableschoolproxy';
+		$cmd .= ' &amp;&amp;';
+		$cmd .= ' net use W: /DELETE"';
+#		create_job($cmd, "Start OssClientSetup installation on: $wsNames", 'now');
+		cmd_pipe($cmd);
+	}
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+	print "\r\n";                         # empty line is required between headers
+	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+	print '<itool>'."\n";
+	print ' <info ossClientPkgDn="'.$ossClientPkgDn.'" />'."\n";
+	print '</itool>';
+}
+
+=item
 ======================================== NEW ================================================
 =cut
 
