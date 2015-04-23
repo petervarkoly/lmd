@@ -411,6 +411,7 @@ if( $action eq 'setManualInstalledPkgStatus' )
 	my $pkgLicense = $cgi->param("NPKGLIC");
 	my $pkgProdKey = $cgi->param("NPKGPRODKEY");
 	my $pkgDisplayName = $cgi->param("NPKGDISPLAY");
+	my $pkgInstall     = $cgi->param("NPKGINSTALL");
 	my $pkgUninstall   = $cgi->param("NPKGUNINSTALL");
 
 #	& "&NPKGNAME=" & newPkgName _
@@ -420,6 +421,7 @@ if( $action eq 'setManualInstalledPkgStatus' )
 #	& "&NPKGLIC="  & strURLInfoAbout _
 #	& "&NPKGPRODKEY="   & strProductKey _
 #	& "&NPKGDISPLAY="   & strDisplayName _
+#       & "&NPKGINSTALL="   & strInstallString _
 #	& "&NPKGUNINSTALL=" & strUninstallString _
 
 	# get host name
@@ -460,6 +462,9 @@ if( $action eq 'setManualInstalledPkgStatus' )
 	my $addStatus = '';
 	if( !$oss->check_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgName=$pkgName") )
 	{
+		my $logPath  = '\\\\install\itool\swrepository\logs\%COMPUTERNAME%';
+		my $cmdInstall = 'wpkg.js /nonotify /quiet /install:'.$pkgName.' /log_file_path:'.$logPath.' /logfilePattern:'.$pkgName.'.log';
+		my $cmdRemove  = 'wpkg.js /nonotify /quiet /remove:'.$pkgName.'  /log_file_path:'.$logPath.' /logfilePattern:'.$pkgName.'.log';
 		my $dn = $oss->create_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgName=$pkgName");
 		if( $oss->exists_dn($dn) )
 		{
@@ -471,22 +476,10 @@ if( $action eq 'setManualInstalledPkgStatus' )
 			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "pkgLicense=$pkgLicense");
 			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "swProductKey=$pkgProdKey");
 			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "swDisplayName=$pkgDisplayName");
-
-			my $logPath  = '\\\\install\itool\swrepository\logs\%COMPUTERNAME%';
-			my $cmdInstall = 'wpkg.js /nonotify /quiet /install:#PKGNAME# /log_file_path:#LOGPATH# /logfilePattern:#PKGNAME#.log';
-			$cmdInstall =~ s/#PKGNAME#/$pkgName/g;
-			$cmdInstall =~ s/#LOGPATH#/$logPath/g;
-			my $cmdRemove  = 'wpkg.js /nonotify /quiet /remove:#PKGNAME#  /log_file_path:#LOGPATH# /logfilePattern:#PKGNAME#.log';
-			$cmdRemove  =~ s/#PKGNAME#/$pkgName/g;
-			$cmdRemove  =~ s/#LOGPATH#/$logPath/g;
 			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdInstall=$cmdInstall");
-			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdRemove=$cmdRemove");
-			if( $pkgUninstall =~ /^MsiExec|MSIEXEC|msiexec(.*)/ ){
-				my $cmdSwInstall = 'MsiExec /q /norestart /i #PKGSOURCE# /l* #LOGPATH#\#PKGNAME#_inst.log';
-				my $cmdSwRemove  = $pkgUninstall;
-				$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwInstall=$cmdSwInstall");
-				$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwRemove=$cmdSwRemove");
-			}
+                        $oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdRemove=$cmdRemove");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwInstall=$pkgInstall");
+			$oss->add_value_to_vendor_object( $vbase, 'osssoftware', "$pkgName", "cmdSwRemove=$pkgUninstall");
 		}
 		else
 		{
