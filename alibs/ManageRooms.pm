@@ -708,8 +708,8 @@ sub modifyRoom
         my $server = ($1 eq 'schooladmin') ? undef : $1;
         if( $deleted )
         {
-                $this->rc("named","restart",$server);
-        	$this->rc("named","restart") if( !undef $server );
+                $this->rc("named","reload",$server);
+        	$this->rc("named","reload") if( defined $server );
         }
         $this->rc("dhcpd","restart",$server);
 	if( $ERROR )
@@ -1150,6 +1150,7 @@ sub addPC
 		{
 			$name = $reply->{other_name};
 		}
+		$name = lc($name);
 		my @dns = $this->add_host($name.'.'.$domain,$ip,$hw,$reply->{hwconfig},$reply->{master},$reply->{wlanaccess});
 		$HOSTDN = $dns[$#dns];
 		push @HOSTDNs, $HOSTDN;
@@ -1358,8 +1359,13 @@ sub selectWlanUser
            require OSSMDM;
            my $mdm = new OSSMDM;
            foreach my $p ( @{$mdm->get_policies()} ) {
-               if( defined $p->{published}->{name} ) {
-                   push @policies, [ $p->{uuid} , $p->{published}->{name} ];
+	       foreach my $v ( @{$p->{versions}} )
+               {
+                   if( $v->{published} )
+                   {
+                        push @policies, [ $p->{uuid} , $p->{name} ];
+                        last;
+                   }
                }
            }
 	   $pol = 0 if(! defined $pol);
