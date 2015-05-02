@@ -25,6 +25,8 @@ sub interface
 		"getCapabilities",
 		"default",
 		"setRegcode",
+		"registerAgain",
+		"refreshUpdates",
 		"set",
 		"searchPackages",
 		"Search",
@@ -54,7 +56,8 @@ sub getCapabilities
 
 sub default
 {
-	my $this  = shift;
+	my $this   = shift;
+	my $reply  = shift;
 	if( -e '/var/run/zypp.pid' )
 	{
 		my $tmp = `cat /var/run/zypp.pid`; chomp $tmp;
@@ -66,7 +69,8 @@ sub default
                 }
                 system("rm -f /var/run/zypp.pid");
 	}
-	if ( $this->{SYSCONFIG}->{SCHOOL_REG_CODE} !~ /([0-9A-Z]{4}-[0-9A-Z]{4})-([0-9A-F]{4}-[0-9A-F]{4})-[0-9A-F]{4}/i )
+	if ( $this->{SYSCONFIG}->{SCHOOL_REG_CODE} !~ /([0-9A-Z]{4}-[0-9A-Z]{4})-([0-9A-F]{4}-[0-9A-F]{4})-[0-9A-F]{4}/i ||
+	     defined $reply->{registerAgain} )
 	{
 		return [
 			{ subtitle => 'This Product is not yet Registered' },
@@ -119,7 +123,8 @@ sub default
 		{ action  => "cancel" },
 		{ action  => "set" },
 		{ action  => "searchPackages" },
-		{ action  => "showUpdates" }
+		{ action  => "showUpdates" },
+		{ action  => "registerAgain" }
 	];
 }
 
@@ -149,6 +154,12 @@ sub set
 	}
 	system("/etc/cron.daily/oss.list-updates");
 	$this->default();
+}
+
+sub registerAgain
+{
+	my $this   = shift;
+	$this->default( { registerAgain => 1 } );
 }
 
 sub setRegcode
@@ -228,7 +239,6 @@ sub searchPackages
 sub showUpdates
 {
 	my $this   = shift;
-	my $reply  = shift;
 
 	if( -e '/var/adm/oss/update-started' )
 	{
@@ -267,11 +277,19 @@ sub showUpdates
 #		{ label => 'Abort/Warning Repositories'},
 		{ table => \@lines},
 		{ action  => "cancel" },
+		{ action  => "refreshUpdates" },
 		{ action  => "searchPackages" },
 		{ action  => "applyUpdates" }
 	];
 
 
+}
+
+sub refreshUpdates
+{
+	my $this   = shift;
+	system("/etc/cron.daily/oss.list-updates");
+	$this->showUpdates();
 }
 
 sub applyUpdates
