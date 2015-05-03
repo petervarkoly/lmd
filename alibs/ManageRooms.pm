@@ -139,6 +139,7 @@ sub interface
         return [
                 "addNewPC",
                 "addNewRoom",
+                "addEnrollment",
                 "addPC",
                 "addRoom",
                 "control",
@@ -644,6 +645,45 @@ sub editPC
 	push @ret, { action => 'cancel' };
 	push @ret, { name   => 'action', value => 'room',   attributes => [ label => 'back' ] };
 	push @ret, { name   => 'action', value => 'editPC', attributes => [ label => 'apply' ] };
+	if( -e "/etc/sysconfig/OSS_MDM" and $this->get_config_value($dn,'WLANACCESS') eq "yes" )
+	{#Enrollment
+	    push @ret, { action => 'addEnrollment' };
+	}
+	return \@ret;
+}
+
+sub addEnrollment
+{
+	my $this 	= shift;
+	my $reply	= shift;
+	my $dn		= $reply->{line} || $reply->{dn};
+	my @ret		= ( { subtitle => main::__("Enrollment for: ").get_name_of_dn($dn) } );
+        push    @INC,"/usr/share/lmd/helper/";
+        require OSSMDM;
+        my $mdm = new OSSMDM;
+
+
+	if( defined $reply->{OS} )
+	{
+	    	my $cn = $this->get_attribute($dn,'cn');
+		my $HW = uc($this->get_attribute($dn,'dhcpHWAddress'));
+		$HW =~ s/ethernet //i;
+	    	$mdm->add_enrollment(0,$cn,$reply->{policy},$reply->{OS},$reply->{ownership},$HW);
+		$this->editPC({ dn => $dn });
+	}
+
+
+	my $pol		= $reply->{policy} || $this->get_computer_config_value('MDM_Policy',$reply->{hwconfig});
+	$pol = 0 if(! defined $pol);
+	my $OS		= $reply->{OS} || $this->get_computer_config_value('MDM_OS',$reply->{hwconfig});
+	my $own		= $reply->{owndership} || $this->get_computer_config_value('MDM_Ownership',$reply->{hwconfig});
+	push @ret, { OS        => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
+	push @ret, { ownership => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
+	push @ret, { name      => 'policy', value => $mdm->get_policies($pol), attributes => [ type  => 'popup' ] };
+	push @ret, { rdn    => get_parent_dn($dn) };
+	push @ret, { dn     => $dn };
+	push @ret, { action => 'cancel' };
+	push @ret, { name   => 'action', value => 'addEnrollment', attributes => [ label => 'apply' ] };
 	return \@ret;
 }
 
