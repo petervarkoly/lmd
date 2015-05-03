@@ -74,7 +74,6 @@ sub default
 	push @r, { rightaction   => "outGoing" };
 	push @r, { rightaction   => "restart" };
 	push @r, { rightaction   => "stop" };
-	push @r, { rightaction   => "cancel" };
 
 	return \@r;
 }
