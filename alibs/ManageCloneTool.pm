@@ -206,7 +206,7 @@ sub editHW
 	elsif( $WSType eq 'MobileDevice' )
 	{
 		$VALUES{MDM_OS}        = "" if( ! defined $VALUES{MDM_OS} );
-		$VALUES{MDM_Policy}    = "" if( ! defined $VALUES{MDM_Policy} );
+		$VALUES{MDM_Policy}    = 0  if( ! defined $VALUES{MDM_Policy} );
 		$VALUES{MDM_Ownership} = "" if( ! defined $VALUES{MDM_Ownership} );
 	}
 	$VALUES{WSType} = [ 'FatClient', 'ThinClient', 'LinuxTerminalServer', 'WindowsTerminalServer', '---DEFAULTS---', $WSType ];
@@ -236,14 +236,7 @@ sub editHW
 				push    @INC,"/usr/share/lmd/helper/";
 				require OSSMDM;
 				my $mdm = new OSSMDM;
-				my @policies = ();
-				foreach my $p ( @{$mdm->get_policies()} ) {
-				    if( defined $p->{published}->{name} ) {
-				    	push @policies, [ $p->{uuid} , $p->{published}->{name} ];
-				    }
-				}
-				push @policies, ('---DEFAULTS---',$VALUES{MDM_Policy}) if $VALUES{MDM_Policy} ne "";
-				push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => \@policies, attributes=> [ type => 'popup' ] } ] };
+				push @table , { line => [ $value , { name   => $value } , { name   =>'val', value => $mdm->get_policies($VALUES{MDM_Policy}), attributes=> [ type => 'popup' ] } ] };
 			}
 		}
 		elsif( $value eq 'Warranty' )

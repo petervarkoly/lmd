@@ -1392,25 +1392,7 @@ sub selectWlanUser
 	my $OS    = $reply->{OS} || $this->get_computer_config_value('MDM_OS',$reply->{hwconfig});
 	my $own   = $reply->{owndership} || $this->get_computer_config_value('MDM_Ownership',$reply->{hwconfig});
 	my $pol   = $reply->{policy} || $this->get_computer_config_value('MDM_Policy',$reply->{hwconfig});
-	my @policies = (['0','No']);
-        if(  -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
-        {
-           push    @INC,"/usr/share/lmd/helper/";
-           require OSSMDM;
-           my $mdm = new OSSMDM;
-           foreach my $p ( @{$mdm->get_policies()} ) {
-	       foreach my $v ( @{$p->{versions}} )
-               {
-                   if( $v->{published} )
-                   {
-                        push @policies, [ $p->{uuid} , $p->{name} ];
-                        last;
-                   }
-               }
-           }
-	   $pol = 0 if(! defined $pol);
-           push @policies, ('---DEFAULTS---',$pol);
-        }
+	   $pol   = 0 if(! defined $pol);
 	if( $reply->{FILTERED} )
 	{
 		my $name  = $reply->{cn} || '*';
@@ -1428,12 +1410,14 @@ sub selectWlanUser
 		#TODO SELECT IT FROM SCHOOLCONFIG
 		if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
 		{
-		   
+		   push    @INC,"/usr/share/lmd/helper/";
+		   require OSSMDM;
+		   my $mdm = new OSSMDM;
 		   push @ret, { label => "Set MDM Parameter" };
 		   push @ret, { mdm => $reply->{mdm} || 0 };
 		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
 		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
-		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
+		   push @ret, { name => 'policy', value => $mdm->get_policies($pol), attributes => [ type  => 'popup' ] };
 		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'searchAgain' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
@@ -1451,11 +1435,14 @@ sub selectWlanUser
 		#TODO SELECT IT FROM SCHOOLCONFIG
 		if( -e "/etc/sysconfig/OSS_MDM" && -e "/usr/share/lmd/helper/OSSMDM.pm" )
 		{
+		   push    @INC,"/usr/share/lmd/helper/";
+		   require OSSMDM;
+		   my $mdm = new OSSMDM;
 		   push @ret, { label => "Set MDM Parameter" };
 		   push @ret, { mdm => $reply->{mdm} || 0 };
 		   push @ret, { OS         => [ 'IOS','ANDROID', '---DEFAULTS---',$OS ] };
 		   push @ret, { ownership  => [ 'COD','BYOD','UNKNOWN', '---DEFAULTS---' ,$own] };
-		   push @ret, { name => 'policy', value => \@policies, attributes => [ type  => 'popup' ] };
+		   push @ret, { name => 'policy', value => $mdm->get_policies($pol), attributes => [ type  => 'popup' ] };
 		}
 		push @ret, { name => 'rightaction', value => "selectWlanUser",   attributes => [ label => 'search' ]  };
 		push @ret, { name => 'rightaction', value => "setWlanUser",      attributes => [ label => 'apply' ]  };
