@@ -1554,7 +1554,7 @@ sub login
     if( defined $REQUEST->{sDN}  && $REQUEST->{sDN} ne $CEPHALIX_SDN )
     {
         $sdn = $REQUEST->{sDN};
-        $dn = $oss->get_user_dn($REQUEST->{username},$dn;
+        $dn = $oss->get_user_dn($REQUEST->{username},$sdn);
     }
     else
     {
