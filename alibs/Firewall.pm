@@ -56,7 +56,6 @@ sub getCapabilities
 		 { variable     => [ "source",       [ type => "popup",   label=>"source" ] ] },
 		 { variable     => [ "ssh",          [ type => "boolean", label=>"ssh" ] ] },
 		 { variable     => [ "ssh_hoch",     [ type => "boolean", label=>"ssh-hoch" ] ] },
-		 { variable     => [ "admin",        [ type => "boolean", label=>"admin" ] ] },
 		 { variable     => [ "schoolserver", [ type => "boolean", label=>"schoolserver" ] ] },
 		 { variable     => [ "smtp",         [ type => "boolean", label=>"smtp" ] ] } ,
 		 { variable     => [ "rdesktop",     [ type => "boolean", label=>"rdesktop" ] ] } ,
@@ -97,7 +96,6 @@ sub inComing
 	my $this   = shift;
 	my $ssh             = 0;
 	my $ssh_hoch        = 0;
-	my $admin           = 0;
 	my $schoolserver    = 0;
 	my $smtp            = 0;
 	my $rdesktop        = 0;
@@ -110,7 +108,6 @@ sub inComing
  	{
  	    if ($port =~ /^ssh$|^22$/)    { $ssh    = 1; next; }
  	    if ($port =~ /^exp2$|^1022$/)    { $ssh_hoch    = 1; next; }
- 	    if ($port =~ /^444$/)       { $admin  = 1; next; }
  	    if ($port =~ /^https$|^443$/) { $schoolserver= 1; next; }
  	    if ($port =~ /^smtp$|^25$/)      { $smtp    = 1; next; }
  	    if ($port =~ /^ms-wbt-server$|^3389$/)      { $rdesktop    = 1; next; }
@@ -118,7 +115,6 @@ sub inComing
  	}
 	push @r, { ssh      => $ssh };
 	push @r, { ssh_hoch => $ssh_hoch };
-	push @r, { admin    => $admin };
 	push @r, { schoolserver => $schoolserver };
 	push @r, { smtp     => $smtp };
 	push @r, { rdesktop     => $rdesktop };
@@ -136,7 +132,6 @@ sub apply
 	my @EXT_TCP   = ();
 	
 	if($reply->{ssh})          { push @EXT_TCP, "ssh"; }
-	if($reply->{admin})        { push @EXT_TCP, "444"; }
 	if($reply->{schoolserver}) { push @EXT_TCP, "https"; }
 	if($reply->{smtp})         { push @EXT_TCP, "smtp"; }
 	if($reply->{ssh_hoch})     { push @EXT_TCP, "1022"; }
