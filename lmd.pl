@@ -128,7 +128,7 @@ unlink "/var/run/lmd.sock" if ( -e "/var/run/lmd.sock" && $ADDRESS eq 'unix' );
 srand;
 
 #Read some LMD settings from /etc/sysconfig/lmd
-my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB, $BAD_LOGIN_TIMEOUT, $MA ) = 
+my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, $DBUSER, $DBPW, $SAVE_PASSWORD_IN_DB, $BAD_LOGIN_TIMEOUT, $MA, $CEPHALIX_SDN ) = 
 	parse_file( "/etc/sysconfig/lmd", 
 	"LMD_APPLICATIONS_NOT_TO_ARCHIVE=",
        	"LMD_APPLICATIONS_TO_ARCHIVE=",
@@ -139,7 +139,8 @@ my ( $APPS_NOT_TO_ARCHIVE, $APPS_TO_ARCHIVE, $ARCHIVE_REQUESTS, $ORDER, $DBCON, 
        	"LMD_DB_PW=",
 	"LMD_SAVE_PASSWORD_IN_DB=",
 	"LMD_BAD_LOGIN_TIMEOUT=",
-	"LMD_MOBILE_MODULES=");
+	"LMD_MOBILE_MODULES=",
+	"LMD_CEPHALIX_SDN=");
 $ARCHIVE_REQUESTS = ( $ARCHIVE_REQUESTS eq 'yes' ) ? 1:0;
 my @CATEGORIES = split /,/,$ORDER;
 
@@ -1549,10 +1550,11 @@ sub login
     my $oss    = oss_base->new();
     my $dn     = '';
     my $result = undef;
-    my $sdn    = $REQUEST->{sDN} || '';
-    if( defined $REQUEST->{sDN} )
+    my $sdn    = '';
+    if( defined $REQUEST->{sDN}  && $REQUEST->{sDN} ne $CEPHALIX_SDN )
     {
-        $dn = $oss->get_user_dn($REQUEST->{username},$REQUEST->{sDN});
+        $sdn = $REQUEST->{sDN};
+        $dn = $oss->get_user_dn($REQUEST->{username},$dn;
     }
     else
     {
