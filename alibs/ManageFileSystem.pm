@@ -10,8 +10,9 @@ use oss_utils;
 use MIME::Base64;
 use vars qw(@ISA);
 use Data::Dumper;
-@ISA = qw(oss_base);
+use File::Basename;
 use Encode qw(encode decode);
+@ISA = qw(oss_base);
 
 sub new
 {
@@ -33,6 +34,7 @@ sub interface
 		"upLoad",
 		"doUpload",
 		"mkDir",
+		"delete",
 		"createDir",
 		"downLoad",
 		"filetree_dir_open"
@@ -110,10 +112,41 @@ sub default
 		push @r, { rightaction   => 'upLoad' };
 		push @r, { rightaction   => 'mkDir' };
 	}
+	if( main::GetSessionValue('username') eq 'admin' )
+	{
+		push @r, { rightaction   => 'delete' };
+	}
 	push @r, { rightaction   => 'cancel' };
 	return \@r;
 }
 
+sub delete
+{
+	my $this    = shift;
+	my $reply   = shift;
+	my $actpath = $reply->{path};
+	if(  main::GetSessionValue('username') ne 'admin' )
+	{
+		return {
+			TYPE => 'NOTICE',
+			MESSAGE => 'You have no permissions to use this function.',
+			MESSAGE_NOTRANSLATE => $actpath 
+		}
+	}
+	my $tmp1 = $actpath;
+	$tmp1 =~ s/$this->{SYSCONFIG}->{SCHOOL_HOME_BASE}//;
+	if( $tmp1 eq $actpath || index($tmp1,'/',2) < 1 )
+	{
+		return {
+			TYPE => 'NOTICE',
+			MESSAGE => 'You have no permissions to delete this path.',
+			MESSAGE_NOTRANSLATE => $actpath 
+		}
+	}
+	system("rm","-rf","--preserve-root","$actpath");
+	$this->default({ path => dirname($actpath) });
+
+}
 sub mkDir
 {
 	my $this   = shift;
