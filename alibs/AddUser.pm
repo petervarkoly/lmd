@@ -91,6 +91,7 @@ sub default
             my $r   = $this->get_attribute($dn,'role');
             my $d   = $this->get_attribute($dn,'description') || main::__($r);
             next if ( $r eq 'workstations' );
+            next if ( $r eq 'sysadmins' && main::GetSessionValue('role') ne 'sysadmins' && main::GetSessionValue('role') ne 'root' );
             push @role, [ $r , $d ];
         }
         push @role, '---DEFAULTS---' , 'students';
