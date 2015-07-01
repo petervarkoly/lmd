@@ -1433,6 +1433,17 @@ sub __
 	}
     }
 
+    $sel  = $DBH->prepare("SELECT value FROM missedlang WHERE lang='$lang' AND section='GLOBAL' AND ( string='$string' OR string='$lstring' )");
+    $sel->execute;
+    my $missedvalue = $sel->fetch();
+    if( defined $missedvalue )
+    {
+        if( $missedvalue->[0] ne '' )
+        {
+            return $missedvalue->[0];
+        }
+    }
+
     $sel  = $DBH->prepare("SELECT value FROM lang WHERE lang='$lang' AND section='$section' AND ( string='$string' OR string='$lstring' )");
     $sel->execute;
     my $value = $sel->fetch();
