@@ -408,6 +408,7 @@ if( $action eq 'setManualInstalledPkgStatus' )
 	notDefinedOss() if( !defined $oss );
 
 	my $pkgName    = $cgi->param("NPKGNAME");
+	$pkgName       = string_to_ascii($pkgName);
 	my $pkgDesc    = $cgi->param("NPKGDESC");
 	my $pkgVersion = $cgi->param("NPKGVER");
 	my $pkgManufac = $cgi->param("NPKGMAN");
