@@ -186,10 +186,10 @@ sub apply
 	if( $print || $all || $proxy || $samba )
 	{
 		push @room_access_control, { line => [ 'closeopen', 
-						{ name => 'WOLCmd',     value => 'WOLCmd',     attributes => [ type => 'action', style => "color:green"] },
-						{ name => 'close_room', value => 'close_room', attributes => [ type => 'action', style => "color:red"] },
-						{ name => 'shut_down',  value => 'shut_down',  attributes => [ type => 'action', style => "color:red"] },
-						{ name => 'room_dn',    value => "$room_dn",   attributes => [ type => 'hidden' ] } ] };
+						{ name => 'WOLCmd',     value => main::__('WOLCmd'),     attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'close_room', value => main::__('close_room'), attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'shut_down',  value => main::__('shut_down'),  attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'room_dn',    value => "$room_dn",             attributes => [ type => 'hidden' ] } ] };
 	}
 	else
 	{
