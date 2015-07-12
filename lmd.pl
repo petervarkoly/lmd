@@ -1330,6 +1330,7 @@ sub writeVariable
 	$name  = $hash->{name};
 	$value = $hash->{value};
     	push @attributes, @{$hash->{attributes}};
+        $notrans= ( $name =~ s/^notranslate_// );
     }
     elsif( defined $VARIABLES->{$APPLICATION}->{$name})
     {
@@ -1421,6 +1422,8 @@ sub __
     $string     =~ s/'/\\'/g;
     my $lstring = lc($string);
     $section = 'DEFAULT' if ( ! defined $section );
+    #Do not translate white spaces.
+    return '' if ( $string !~ /\S+/ );
 
     my $sel  = $DBH->prepare("SELECT value FROM missedlang WHERE lang='$lang' AND section='$section' AND ( string='$string' OR string='$lstring' )");
     $sel->execute;
