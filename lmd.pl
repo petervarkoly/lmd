@@ -1341,11 +1341,9 @@ sub writeVariable
           @attributes = ( 'type' , 'string' );
     }
     $type = $attributes[1] || '';
-    # hidden must not be translated;
-    next if( $type eq 'hidden' );
 
     # First we try to translate the tag in label attribute if we must
-    if( ! $notrans && $name ne 'label' && $name ne 'subtitle')
+    if( ! $notrans && $name ne 'label' && $name ne 'subtitle' && $type ne 'hidden' )
     {
 	if ( $name =~ /^action|rightaction$/ || $type eq 'checkbox' )
 	{
