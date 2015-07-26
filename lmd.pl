@@ -1514,16 +1514,25 @@ sub translate($$)
           $labeled = 1;
 	  $li = $i;
        }
-       if ( $av && $attr eq "help")
+       elsif ( $av && $attr eq "help")
        {
           $helped = 1;
 	  $hi = $i;
        }
-       if ( $av && $attr eq "backlabel")
+       elsif ( $av && $attr eq "backlabel")
        {
           $backed = 1;
 	  $bi = $i;
        }
+       elsif ( $av && $attr eq "notranslate_help")
+       {
+       	  $attrs->[$i-1] = 'help';
+       }
+       elsif ( $av && $attr eq "notranslate_backlabel")
+       {
+       	  $attrs->[$i-1] = 'backlabel';
+       }
+       
        $av = 1 - $av;
     }
     if( $labeled )
