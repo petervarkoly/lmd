@@ -705,7 +705,26 @@ sub modifyRoom
 			next;
 		}
 		my $master = $reply->{ws}->{$dn}->{master}     ? 'yes' : 'no';
-		$this->set_config_value($dn,'MASTER',$master);
+		if( $master eq "yes" )
+		{
+			my $masters = get_masters_of_hwconf($reply->{ws}->{$dn}->{hwconfig},$dn);
+			if( scalar @$masters )
+			{
+				$reply->{warning} .= main::__("There are more masters defined for this hardware configuration:").'<br>';
+				foreach @$masters
+				{
+					$reply->{warning} .= get_name_of_dn($_);
+				}
+			}
+			else
+			{
+				$this->set_config_value($dn,'MASTER',$master);
+			}
+		}
+		else
+		{
+			$this->set_config_value($dn,'MASTER',$master);
+		}
 		if( $this->{RADIUS} )
 		{
 			my $wlan   = $reply->{ws}->{$dn}->{wlanaccess} ? 'yes' : 'no';
