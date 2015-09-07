@@ -372,7 +372,6 @@ sub open_room
 	my $room = $reply->{room_access_control}->{closeopen}->{room_dn};
 	my $ip = main::GetSessionValue('ip');
 	$this->set_room_access_state( $room, 'printing', "1", $ip );
-	$this->set_room_access_state( $room, 'all', "1", $ip );
 	$this->set_room_access_state( $room, 'proxy', "1", $ip );
 	$this->set_room_access_state( $room, 'samba', "1", $ip );
 	$reply->{rooms}->{schools_name}->{rooms} = "$room";
