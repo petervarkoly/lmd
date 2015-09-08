@@ -767,8 +767,8 @@ sub modifyRoom
         my $server = ($1 eq 'schooladmin') ? undef : $1;
         if( $deleted )
         {
-                $this->rc("named","reload",$server);
-        	$this->rc("named","reload") if( defined $server );
+                $this->rc("named","restart",$server);
+        	$this->rc("named","restart") if( defined $server );
         }
         $this->rc("dhcpd","restart",$server);
 	if( $ERROR )
@@ -1237,8 +1237,8 @@ sub addPC
 	}
         $reply->{dn} =~ /cn=config1,cn=(.*),ou=DHCP/;
         my $server = ($1 eq 'schooladmin') ? undef : $1;
-        $this->rc("named","reload",$server);
-        $this->rc("named","reload") if( defined $server );
+        $this->rc("named","restart",$server);
+        $this->rc("named","restart") if( defined $server );
         $this->rc("dhcpd","restart",$server);
         $reply->{line} = $reply->{dn};
 	if(exists($reply->{flag}))

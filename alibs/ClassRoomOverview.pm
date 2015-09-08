@@ -26,6 +26,10 @@ sub interface
 		"getCapabilities",
 		"default",
 		"apply",
+		"close_room",
+		"open_room",
+		"WOLCmd",
+		"shut_down",
 		"printing_allowed",
 		"direct_internet_access",
 		"internet_allowed",
@@ -177,13 +181,29 @@ sub apply
 	push @ret, { label => main::__("Room Access Control") };
 	my ( $all, $mail, $print, $proxy, $samba ) = $this->get_room_access_state($room_dn);
 	my ($print_color, $all_color, $proxy_color, $samba_color) = '';
-	if($print){ $print = "Disable Printing"; $print_color = "green"; }else{ $print = "Enable Printing"; $print_color = "red"; }
-	if($all){ $all = "Disable Direct Internet"; $all_color = "green"; }else{ $all = "Enable Direct Internet"; $all_color = "red"; }
+	my   @room_access_control = ('room_access_control');
+	push @room_access_control, { head => [ '', '', '', '','']};
+	if( $print || $all || $proxy || $samba )
+	{
+		push @room_access_control, { line => [ 'closeopen', 
+						{ name => 'WOLCmd',     value => main::__('WOLCmd'),     attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'close_room', value => main::__('close_room'), attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'shut_down',  value => main::__('shut_down'),  attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'room_dn',    value => "$room_dn",             attributes => [ type => 'hidden' ] } ] };
+	}
+	else
+	{
+		push @room_access_control, { line => [ 'closeopen', 
+						{ name => 'WOLCmd',     value => 'WOLCmd',    attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'open_room',  value => 'open_room', attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'shut_down',  value => 'shut_down', attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'room_dn',    value => "$room_dn",  attributes => [ type => 'hidden' ] } ] };
+	}
+	if($print){ $print = "Disable Printing"; $print_color = "green"; }         else{ $print = "Enable Printing"; $print_color = "red"; }
+	if($all)  { $all   = "Disable Direct Internet"; $all_color = "green"; }    else{ $all = "Enable Direct Internet"; $all_color = "red"; }
 	if($proxy){ $proxy = "Disable filtered Internet"; $proxy_color = "green"; }else{ $proxy = "Enable filtered Internet"; $proxy_color = "red"; }
-	if($samba){ $samba = "Disable Windows Login"; $samba_color = "green"; }else{ $samba = "Enable Windows Login"; $samba_color = "red"; }
+	if($samba){ $samba = "Disable Windows Login"; $samba_color = "green"; }    else{ $samba = "Enable Windows Login"; $samba_color = "red"; }
 
-	my @room_access_control = ('room_access_control');
-	push @room_access_control, { head => [ '', '', '', '']};
 	if( main::isAllowed('RoomAccessControl.showMyRoom.all') )
 	{
 		push @room_access_control, { line => [ 'room_access_control',
@@ -206,7 +226,7 @@ sub apply
 	push @ret, { table => \@room_access_control };
 
 	#------get printer proplem-------
-	push @ret, { label => main::__("Printers Problem") };
+	push @ret, { label => "Printers Problem" };
 	my @room_access_control = ('room_access_control');
 	my $printer_problem = $this->get_printer_problem("$room_dn");
 	foreach my $printer_name (sort keys %{$printer_problem}){
@@ -221,7 +241,7 @@ sub apply
 	}
 
 	#-------get white list----------
-	push @ret, { label => main::__("Internet Permission") };
+	push @ret, { label => "Internet Permission" };
 	my $actuale_room   = main::GetSessionValue('room');
 	$actuale_room      = $this->get_room_by_name($actuale_room);
 	my $LANG       = main::GetSessionValue('lang');
@@ -256,21 +276,21 @@ sub apply
 	}
 
 	#------set action---------------
-	push @ret, { label => main::__("Actions") };
+	push @ret, { label => "Actions" };
 	my @actions = ('actions');
         push @actions, { head => ['', '', '' ]};
 	my $get_install_clax = `zypper --no-gpg-checks --gpg-auto-import-keys -n se oss-clax | grep oss-clax | gawk '{print \$1 }'`; 
 	my @splt_get_install_clax = split("\n",$get_install_clax);
 	if($splt_get_install_clax[0] eq "i"){
 		push @actions, { line => [ "classroom_monitor",
-							{ name => 'classroom_monitor', value => '<a href="/monitor/rap?startup=main&sid='.$SESSIONID.'" target="_blank">'.main::__('ClientControl').'</a>', attributes => [ type => 'label'] },
+							{ name => 'notranslate_classroom_monitor', value => '<a href="/monitor/rap?startup=main&sid='.$SESSIONID.'" target="_blank">'.main::__('ClientControl').'</a>', attributes => [ type => 'label'] },
 					]};
 	}
 	push @actions, { line => [ "change_student_passw",
-						{ name => 'change_student_passw', value => '<a href="/ossadmin/?application=ManageStudents" target="">'.main::__('Change Student Password').'</a>', attributes => [ type => 'label'] }
+						{ name => 'notranslate_change_student_passw', value => '<a href="/ossadmin/?application=ManageStudents" target="">'.main::__('Change Student Password').'</a>', attributes => [ type => 'label'] }
 					]};
 	push @actions, { line => [ "test_wizard",
-						{ name => 'test_wizard', value => '<a href="/ossadmin/?application=TeacherTestWizard" target="">'.main::__('TeacherTestWizard').'</a>', attributes => [ type => 'label'] }
+						{ name => 'notranslate_test_wizard', value => '<a href="/ossadmin/?application=TeacherTestWizard" target="">'.main::__('TeacherTestWizard').'</a>', attributes => [ type => 'label'] }
 					]};
 	push @ret, { table => \@actions };
 
@@ -329,6 +349,35 @@ sub chooseRoom
 	}
 }
 
+sub close_room
+{
+
+	my $this   = shift;
+	my $reply  = shift;
+	my $room = $reply->{room_access_control}->{closeopen}->{room_dn};
+	my $ip = main::GetSessionValue('ip');
+	$this->set_room_access_state( $room, 'printing', "0", $ip );
+	$this->set_room_access_state( $room, 'all', "0", $ip );
+	$this->set_room_access_state( $room, 'proxy', "0", $ip );
+	$this->set_room_access_state( $room, 'samba', "0", $ip );
+	$reply->{rooms}->{schools_name}->{rooms} = "$room";
+	$this->apply($reply);
+}
+
+sub open_room
+{
+
+	my $this   = shift;
+	my $reply  = shift;
+	my $room = $reply->{room_access_control}->{closeopen}->{room_dn};
+	my $ip = main::GetSessionValue('ip');
+	$this->set_room_access_state( $room, 'printing', "1", $ip );
+	$this->set_room_access_state( $room, 'proxy', "1", $ip );
+	$this->set_room_access_state( $room, 'samba', "1", $ip );
+	$reply->{rooms}->{schools_name}->{rooms} = "$room";
+	$this->apply($reply);
+}
+
 sub printing_allowed
 {
 	my $this   = shift;
@@ -345,6 +394,42 @@ sub printing_allowed
 	$reply->{rooms}->{schools_name}->{rooms} = "$room";
 	$this->apply($reply);
 }
+
+sub WOLCmd
+{
+
+	my $this   = shift;
+	my $reply  = shift;
+	my $room = $reply->{room_access_control}->{closeopen}->{room_dn};
+        my $net     = new Net::Netmask( $this->get_school_config('SCHOOL_NETWORK'), $this->get_school_config('SCHOOL_NETMASK') );
+        my $BC      = $net->broadcast();
+        my @WSS     = ();
+        foreach my $ws ( @{$this->get_workstations_of_room($room)} )
+        {
+	   print STDERR "Waking up:".get_name_of_dn($ws)."\n";
+	   system('/usr/sbin/oss_control_client.pl --cmd WOLCmd --client '.get_name_of_dn($ws).' &');
+        }
+	$reply->{rooms}->{schools_name}->{rooms} = "$room";
+	$this->apply($reply);
+
+}
+
+sub shut_down
+{
+
+	my $this   = shift;
+	my $reply  = shift;
+	my $room   = $reply->{room_access_control}->{closeopen}->{room_dn};
+	my $mypc   = $this->get_workstation(main::GetSessionValue('ip'));
+        foreach my $ws ( @{$this->get_workstations_of_room($room)} )
+        {
+	   next if ( $ws eq $mypc );
+	   system('/usr/sbin/oss_control_client.pl --cmd ShutDownCmdSHUTDOWN --client '.get_name_of_dn($ws).' &');
+	}
+	$reply->{rooms}->{schools_name}->{rooms} = "$room";
+	$this->apply($reply);
+}
+
 
 sub direct_internet_access
 {

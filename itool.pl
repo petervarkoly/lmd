@@ -248,6 +248,7 @@ if( $action eq 'getSwRepoInfo' )
 				next if( ! $oss->exists_dn($pkgDn) );
 				$hash{$i}->{id}     = $tPkgN;
 				$hash{$i}->{status} = $oss->get_wsuser_pkg_status($userDn,$tPkgN);
+				$hash{$i}->{pkgVersion} = '';
 				$hash{$i}->{cmdinstall} = '';
 				$hash{$i}->{cmdremove}  = '';
 				$hash{$i}->{cmdreboot}  = '';
@@ -266,6 +267,7 @@ if( $action eq 'getSwRepoInfo' )
 				my $pkgName = $oss->get_attribute( $pkgDn, 'configurationKey');
 				$hash{$i}->{id}     = $pkgName;
 				$hash{$i}->{status} = $oss->get_wsuser_pkg_status($userDn, $pkgName);
+				$hash{$i}->{pkgVersion} = $oss->get_config_value($pkgDn, 'pkgVersion');
 				$hash{$i}->{cmdinstall} = $oss->get_config_value($pkgDn, 'cmdInstall');
 				$hash{$i}->{cmdremove}  = $oss->get_config_value($pkgDn, 'cmdRemove');
 				$hash{$i}->{cmdreboot}  = $oss->get_config_value($pkgDn, 'cmdReboot');
@@ -290,6 +292,7 @@ if( $action eq 'getSwRepoInfo' )
 	foreach my $item (sort {$a<=>$b} keys %hash){
 		my $line = ' <package id="'.$hash{$item}->{id}.'">';
 		$line .= '<pkgStatus>'.$hash{$item}->{status}.'</pkgStatus>';
+		$line .= '<pkgVersion>'.$hash{$item}->{pkgVersion}.'</pkgVersion>';
 		$line .= '<cmdInstall>'.$hash{$item}->{cmdinstall}.'</cmdInstall>';
 		$line .= '<cmdRemove>'.$hash{$item}->{cmdremove}.'</cmdRemove>';
 		$line .= '<cmdReboot>'.$hash{$item}->{cmdreboot}.'</cmdReboot>';
@@ -405,6 +408,7 @@ if( $action eq 'setManualInstalledPkgStatus' )
 	notDefinedOss() if( !defined $oss );
 
 	my $pkgName    = $cgi->param("NPKGNAME");
+	$pkgName       = string_to_ascii($pkgName);
 	my $pkgDesc    = $cgi->param("NPKGDESC");
 	my $pkgVersion = $cgi->param("NPKGVER");
 	my $pkgManufac = $cgi->param("NPKGMAN");

@@ -1330,6 +1330,7 @@ sub writeVariable
 	$name  = $hash->{name};
 	$value = $hash->{value};
     	push @attributes, @{$hash->{attributes}};
+        $notrans= ( $name =~ s/^notranslate_// );
     }
     elsif( defined $VARIABLES->{$APPLICATION}->{$name})
     {
@@ -1340,8 +1341,9 @@ sub writeVariable
           @attributes = ( 'type' , 'string' );
     }
     $type = $attributes[1] || '';
+
     # First we try to translate the tag in label attribute if we must
-    if( ! $notrans && $name ne 'label' && $name ne 'subtitle')
+    if( ! $notrans && $name ne 'label' && $name ne 'subtitle' && $type ne 'hidden' )
     {
 	if ( $name =~ /^action|rightaction$/ || $type eq 'checkbox' )
 	{
@@ -1421,6 +1423,8 @@ sub __
     $string     =~ s/'/\\'/g;
     my $lstring = lc($string);
     $section = 'DEFAULT' if ( ! defined $section );
+    #Do not translate white spaces.
+    return '' if ( $string !~ /\S+/ );
 
     my $sel  = $DBH->prepare("SELECT value FROM missedlang WHERE lang='$lang' AND section='$section' AND ( string='$string' OR string='$lstring' )");
     $sel->execute;
@@ -1431,6 +1435,17 @@ sub __
 	{
 	    return $missedvalue->[0];
 	}
+    }
+
+    $sel  = $DBH->prepare("SELECT value FROM missedlang WHERE lang='$lang' AND section='GLOBAL' AND ( string='$string' OR string='$lstring' )");
+    $sel->execute;
+    my $missedvalue = $sel->fetch();
+    if( defined $missedvalue )
+    {
+        if( $missedvalue->[0] ne '' )
+        {
+            return $missedvalue->[0];
+        }
     }
 
     $sel  = $DBH->prepare("SELECT value FROM lang WHERE lang='$lang' AND section='$section' AND ( string='$string' OR string='$lstring' )");
@@ -1499,16 +1514,25 @@ sub translate($$)
           $labeled = 1;
 	  $li = $i;
        }
-       if ( $av && $attr eq "help")
+       elsif ( $av && $attr eq "help")
        {
           $helped = 1;
 	  $hi = $i;
        }
-       if ( $av && $attr eq "backlabel")
+       elsif ( $av && $attr eq "backlabel")
        {
           $backed = 1;
 	  $bi = $i;
        }
+       elsif ( $av && $attr eq "notranslate_help")
+       {
+       	  $attrs->[$i-1] = 'help';
+       }
+       elsif ( $av && $attr eq "notranslate_backlabel")
+       {
+       	  $attrs->[$i-1] = 'backlabel';
+       }
+       
        $av = 1 - $av;
     }
     if( $labeled )

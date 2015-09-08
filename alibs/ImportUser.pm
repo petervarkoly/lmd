@@ -636,7 +636,8 @@ sub RecodeImportFile($) {
 	{
         	return 1;
 	}
-	return 0;
+	#TODO fix the check
+	return 1;
 }
 #-----------------------------------------------------------------------
 sub get_import_list
