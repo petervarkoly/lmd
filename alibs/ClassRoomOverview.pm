@@ -30,6 +30,7 @@ sub interface
 		"open_room",
 		"WOLCmd",
 		"shut_down",
+		"reboot",
 		"printing_allowed",
 		"direct_internet_access",
 		"internet_allowed",
@@ -189,14 +190,16 @@ sub apply
 						{ name => 'WOLCmd',     value => main::__('WOLCmd'),     attributes => [ type => 'action', style => "color:green"] },
 						{ name => 'close_room', value => main::__('close_room'), attributes => [ type => 'action', style => "color:red"] },
 						{ name => 'shut_down',  value => main::__('shut_down'),  attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'reboot',     value => main::__('reboot'),     attributes => [ type => 'action', style => "color:red"] },
 						{ name => 'room_dn',    value => "$room_dn",             attributes => [ type => 'hidden' ] } ] };
 	}
 	else
 	{
 		push @room_access_control, { line => [ 'closeopen', 
-						{ name => 'WOLCmd',     value => 'WOLCmd',    attributes => [ type => 'action', style => "color:green"] },
-						{ name => 'open_room',  value => 'open_room', attributes => [ type => 'action', style => "color:green"] },
-						{ name => 'shut_down',  value => 'shut_down', attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'WOLCmd',     value => main::__('WOLCmd'),    attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'open_room',  value => main::__('open_room'), attributes => [ type => 'action', style => "color:green"] },
+						{ name => 'shut_down',  value => main::__('shut_down'), attributes => [ type => 'action', style => "color:red"] },
+						{ name => 'reboot',     value => main::__('reboot'),	attributes => [ type => 'action', style => "color:red"] },
 						{ name => 'room_dn',    value => "$room_dn",  attributes => [ type => 'hidden' ] } ] };
 	}
 	if($print){ $print = "Disable Printing"; $print_color = "green"; }         else{ $print = "Enable Printing"; $print_color = "red"; }
@@ -425,6 +428,23 @@ sub shut_down
         {
 	   next if ( $ws eq $mypc );
 	   system('/usr/sbin/oss_control_client.pl --cmd ShutDownCmdSHUTDOWN --client '.get_name_of_dn($ws).' &');
+	}
+	$reply->{rooms}->{schools_name}->{rooms} = "$room";
+	$this->apply($reply);
+}
+
+
+sub reboot
+{
+
+	my $this   = shift;
+	my $reply  = shift;
+	my $room   = $reply->{room_access_control}->{closeopen}->{room_dn};
+	my $mypc   = $this->get_workstation(main::GetSessionValue('ip'));
+        foreach my $ws ( @{$this->get_workstations_of_room($room)} )
+        {
+	   next if ( $ws eq $mypc );
+	   system('/usr/sbin/oss_control_client.pl --cmd ShutDownCmdREBOOT --client '.get_name_of_dn($ws).' &');
 	}
 	$reply->{rooms}->{schools_name}->{rooms} = "$room";
 	$this->apply($reply);
