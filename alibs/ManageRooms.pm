@@ -708,15 +708,16 @@ sub modifyRoom
 		my $master = $reply->{ws}->{$dn}->{master}     ? 'yes' : 'no';
 		if( $master eq "yes" )
 		{
-			my $masters = get_masters_of_hwconf($reply->{ws}->{$dn}->{hwconfig},$dn);
+			my $masters = $this->get_masters_of_hwconf($reply->{ws}->{$dn}->{hwconfig},$dn);
 			if( scalar @$masters )
 			{
-				$reply->{warning} .= main::__("There was other master defined for this hardware configuration:").'<br>';
-				foreach @$masters
+				$reply->{warning} .= main::__("There was other master defined for this hardware configuration: ");
+				foreach ( @$masters )
 				{
 					$reply->{warning} .= get_name_of_dn($_);
 					$this->set_config_value($_,'MASTER','no');
 				}
+				$reply->{warning} .= '<br>';
 			}
 		}
 		$this->set_config_value($dn,'MASTER',$master);
@@ -1207,15 +1208,16 @@ sub addPC
 		$name = lc($name);
                 if( $reply->{master} )
                 {
-                        my $masters = get_masters_of_hwconf($reply->{hwconfig});
+                        my $masters = $this->get_masters_of_hwconf($reply->{hwconfig});
                         if( scalar @$masters )
                         {
-                                $reply->{warning} .= main::__("There is other master defined for this hardware configuration:").'<br>';
-                                foreach @$masters
+                                $reply->{warning} .= main::__("There is other master defined for this hardware configuration: ");
+                                foreach ( @$masters )
                                 {
                                         $reply->{warning} .= get_name_of_dn($_);
                                 }
 				$reply->{master} = 0;
+				$reply->{warning} .= '<br>';
                         }
                 }
 
