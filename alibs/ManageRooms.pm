@@ -588,6 +588,7 @@ sub room
 	push @ret, { subtitle => $description };
 	push @ret, { table    =>  \@lines };
 	push @ret, { dn       => $reply->{line} };
+	push @ret, { NOTICE   => $reply->{warning} } if ( defined $reply->{warning} );
 	push @ret, { action   => "cancel" };
 	push @ret, { action   => "addNewPC" };
 	push @ret, { action   => "roomType" };
@@ -710,21 +711,15 @@ sub modifyRoom
 			my $masters = get_masters_of_hwconf($reply->{ws}->{$dn}->{hwconfig},$dn);
 			if( scalar @$masters )
 			{
-				$reply->{warning} .= main::__("There are more masters defined for this hardware configuration:").'<br>';
+				$reply->{warning} .= main::__("There was other master defined for this hardware configuration:").'<br>';
 				foreach @$masters
 				{
 					$reply->{warning} .= get_name_of_dn($_);
+					$this->set_config_value($_,'MASTER','no');
 				}
 			}
-			else
-			{
-				$this->set_config_value($dn,'MASTER',$master);
-			}
 		}
-		else
-		{
-			$this->set_config_value($dn,'MASTER',$master);
-		}
+		$this->set_config_value($dn,'MASTER',$master);
 		if( $this->{RADIUS} )
 		{
 			my $wlan   = $reply->{ws}->{$dn}->{wlanaccess} ? 'yes' : 'no';
@@ -1210,10 +1205,25 @@ sub addPC
 			$name = $reply->{other_name};
 		}
 		$name = lc($name);
+                if( $reply->{master} )
+                {
+                        my $masters = get_masters_of_hwconf($reply->{hwconfig});
+                        if( scalar @$masters )
+                        {
+                                $reply->{warning} .= main::__("There is other master defined for this hardware configuration:").'<br>';
+                                foreach @$masters
+                                {
+                                        $reply->{warning} .= get_name_of_dn($_);
+                                }
+				$reply->{master} = 0;
+                        }
+                }
+
 		my @dns = $this->add_host($name.'.'.$domain,$ip,$hw,$reply->{hwconfig},$reply->{master},$reply->{wlanaccess});
 		$HOSTDN = $dns[$#dns];
 		push @HOSTDNs, $HOSTDN;
-		if( ! $this->add( { uid          	   => $name,
+		if( ! $this->add( {
+			     uid          	   => $name,
 			     sn			   => $name.' Workstation-User',
 			     role         	   => 'workstations',
 			     userpassword 	   => $name,
@@ -1222,7 +1232,8 @@ sub addPC
 		{
 			print STDERR $this->{ERROR}->{text}."\n";
 		}
-		if( ! $this->add( { uid        	   => $name.'$',
+		if( ! $this->add( {
+			     uid        	   => $name.'$',
 			     sn			   => 'Machine account '.$name ,
 			     description	   => 'Machine account '.$name ,
 			     role         	   => 'machine',
