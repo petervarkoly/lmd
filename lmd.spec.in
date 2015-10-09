@@ -51,9 +51,15 @@ Authors:
 %package web
 Summary:	Java based web agent for the LMD
 Group:		Productivity/
+%if 0%{?sles_version} == 11
 BuildRequires:	tomcat6 apache2 apache2-mod_jk syslog-ng
 Requires:	tomcat6 apache2 apache2-mod_jk syslog-ng
 Requires:       java     >= 1.6.0
+%else
+BuildRequires:	tomcat apache2 apache2-mod_jk syslog-ng
+Requires:	tomcat apache2 apache2-mod_jk syslog-ng
+Requires:       java     >= 1.8.0
+%endif
 Requires:	lmd >= %{version}
 
 %description web
