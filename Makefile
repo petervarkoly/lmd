@@ -2,7 +2,7 @@
 # Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 DESTDIR		= /
 LMDDIR		= $(DESTDIR)/usr/share/lmd
-TOMCATROOT 	= $(DESTDIR)/srv/tomcat6/webapps
+TOMCATROOT 	= $(DESTDIR)/srv/tomcat/webapps
 REQPACKAGES     = $(shell cat REQPACKAGES)
 VERSION		= $(shell test -e ../VERSION && cp ../VERSION VERSION ; cat VERSION)
 RELEASE		= $(shell cat RELEASE)

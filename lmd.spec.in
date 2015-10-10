@@ -19,8 +19,10 @@ BuildRequires: unzip openschool-base
 BuildRequires: -brp-check-suse
 %if 0%{?sles_version} == 11
 BuildRequires: java-1_6_0-ibm
+%define        tomcatroot /srv/tomcat6/webapps
 %else
 BuildRequires: java
+%define        tomcatroot /srv/tomcat/webapps
 %endif
 Requires:     filesystem
 Requires:	mysql-client
@@ -72,7 +74,7 @@ Java based Web Agent for the Linux Management Daemon (LMD).
 # just here to be complete
 
 %install
-make DESTDIR=%{buildroot} install
+make DESTDIR=%{buildroot} TOMCATROOT=%{tomcatroot} install
 
 %preun
 %stop_on_removal
