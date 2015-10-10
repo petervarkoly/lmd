@@ -74,7 +74,7 @@ Java based Web Agent for the Linux Management Daemon (LMD).
 # just here to be complete
 
 %install
-make DESTDIR=%{buildroot} TOMCATROOT=%{tomcatroot} install
+make DESTDIR=%{buildroot} TOMCATROOT=%{buildroot}/%{tomcatroot} install
 
 %preun
 %stop_on_removal
