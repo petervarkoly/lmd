@@ -1866,15 +1866,15 @@ sub set_sofware
 
                 my $oldsw = '';
                 foreach my $i (sort @{$this->search_vendor_object_for_vendor( 'osssoftware', $user_dn)}){
-			my $sw_name = $this->get_attribute($i, 'configurationKey');
-			my $status  = $this->get_attribute($i, 'configurationValue');
+                        my $sw_name = get_name_of_dn($i);
+                        my $status  = $this->get_config_value($i, 'pkgStatus');
 			$oldsw .= $sw_name."<BR>" if( $status eq 'installed');
 		}
 
 		my $newsw = '';
 		my $new_hw_dn = 'configurationKey='.$swinstall->{$dn_ws}->{new_hw}.','.$this->{SYSCONFIG}->{COMPUTERS_BASE};
 		foreach my $i ( @{ $this->get_config_values($new_hw_dn,'SWPackage','ARRAY') } ){
-			$newsw .= $i."<BR>";
+			$newsw .= get_name_of_dn($i)."<BR>";
 		}
 
 		push @ws, { line => [ $dn_ws,
@@ -1893,7 +1893,7 @@ sub set_sofware
 					main::__('Please, leave selected the PCs where do you wish to install the new softwares.') };
 	        push @ret, { table  => \@ws };
 		push @ret, { name => 'sw_installing_now', value => "", attributes => [label => '', type => 'boolean', backlabel => 'Run now the install/deinstall command on these selected workstations'] };
-        	push @ret, { action => 'install_software' };
+		push @ret, { name => 'action', value => 'install_software', attributes => [label => 'apply' ] };
 	}
         push @ret, { dn => $room_dn };
         return \@ret;
@@ -1918,7 +1918,8 @@ sub install_software
 		@sw_name_list = @{$softwares} if( ref($softwares) eq 'ARRAY');
 		my $tmp;
 		if(ref($softwares) eq 'ARRAY' ){
-			$tmp = $this->software_install_cmd(\@ws_dns, \@sw_name_list, $reply->{sw_installing_now});
+			$tmp = $this->makeInstallDeinstallCmd('install',\@ws_dns, \@sw_name_list);
+			makeInstallationNow(\@ws_dns) if ($reply->{sw_installing_now});
 		}
 		print Dumper($tmp);
 		foreach my $type ( sort keys %{$tmp} ){
