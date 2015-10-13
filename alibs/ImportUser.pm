@@ -62,6 +62,7 @@ sub getCapabilities
 		{ variable     => [ "file",            [ type => "filefield" ] ] },
 		{ variable     => [ "path_file",       [ type => 'hidden'] ] },
 		{ variable     => [ "pg_limit",        [ type => 'hidden'] ] },
+		{ variable     => [ "pg_lines",        [ type => 'string', label=>"Lines pro Page:" ] ] },
 		{ variable     => [ "imp_dat_subtit",  [ type => 'hidden'] ] },
 	];
 }
@@ -236,7 +237,8 @@ sub open
 	my $reply       = shift;
 	my $import_file = $reply->{line};
 	my $pg_num      = $reply->{pg_num} || 0;
-	my $pg_limit    = $reply->{pg_limit} || 20;
+	my $pg_lines    = $reply->{pg_lines} || 40;
+	my $pg_limit    = $reply->{pg_limit} || $pg_lines;
 	my $pg_init     = 0;
 	my @list        = ('import_list');
 	my @del_user    = ('del_users');
@@ -244,6 +246,7 @@ sub open
 	my @ret;
 
 	push @ret, { subtitle => $reply->{import_files}->{$reply->{line}}->{imp_dat_subtit} };
+	push @ret, { pg_lines => $pg_lines };
 
 	my $hash = $this->get_import_list("$import_file");
 	foreach my $index (sort keys %{$hash}){
@@ -335,7 +338,7 @@ sub next
 	$reply->{line}     = $reply->{path_file};
 	$reply->{import_files}->{$reply->{line}}->{imp_dat_subtit} = $reply->{imp_dat_subtit};
 	$reply->{pg_num}   = $reply->{pg_limit};
-	$reply->{pg_limit} = $reply->{pg_num} + 20;
+	$reply->{pg_limit} = $reply->{pg_num} + $reply->{pg_lines};
 	$reply->{import_files}->{$reply->{line}}->{imp_dat_subtit} = $reply->{imp_dat_subtit};
 	if( exists($reply->{start_import_open}) ){
 		$reply->{import_files}->{$reply->{line}}->{start_import_open} = '1';
@@ -350,8 +353,8 @@ sub back
 
 	$reply->{line}     = $reply->{path_file};
 	$reply->{import_files}->{$reply->{line}}->{imp_dat_subtit} = $reply->{imp_dat_subtit};
-	$reply->{pg_num}   = $reply->{pg_limit} - 40;
-	$reply->{pg_limit} = $reply->{pg_limit} - 20;
+	$reply->{pg_num}   = $reply->{pg_limit} - 2*$reply->{pg_lines};
+	$reply->{pg_limit} = $reply->{pg_limit} - $reply->{pg_lines};
 	if( exists($reply->{start_import_open}) ){
 		$reply->{import_files}->{$reply->{line}}->{start_import_open} = '1';
 	}
@@ -384,7 +387,7 @@ sub refresh
 	$reply->{line}     = $reply->{path_file};
         $reply->{import_files}->{$reply->{line}}->{imp_dat_subtit} = $reply->{imp_dat_subtit};
 	$reply->{import_files}->{$reply->{line}}->{start_import_open} = '1';
-	$reply->{pg_num}   = $reply->{pg_limit} - 20;
+	$reply->{pg_num}   = $reply->{pg_limit} - $reply->{pg_lines};
         $reply->{pg_limit} = $reply->{pg_limit} ;
 	$this->open($reply);
 }
