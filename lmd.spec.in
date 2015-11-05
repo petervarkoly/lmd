@@ -19,8 +19,10 @@ BuildRequires: unzip openschool-base
 BuildRequires: -brp-check-suse
 %if 0%{?sles_version} == 11
 BuildRequires: java-1_6_0-ibm
+%define        tomcat tomcat6
 %else
 BuildRequires: java
+%define        tomcat tomcat
 %endif
 Requires:     filesystem
 Requires:	mysql-client
@@ -51,8 +53,8 @@ Authors:
 %package web
 Summary:	Java based web agent for the LMD
 Group:		Productivity/
-BuildRequires:	tomcat6 apache2 apache2-mod_jk syslog-ng
-Requires:	tomcat6 apache2 apache2-mod_jk syslog-ng
+BuildRequires:	%{tomcat} apache2 apache2-mod_jk syslog-ng
+Requires:	%{tomcat} apache2 apache2-mod_jk syslog-ng
 Requires:       java     >= 1.6.0
 Requires:	lmd >= %{version}
 
@@ -66,7 +68,7 @@ Java based Web Agent for the Linux Management Daemon (LMD).
 # just here to be complete
 
 %install
-make DESTDIR=%{buildroot} install
+make DESTDIR=%{buildroot} TOMCAT=%{tomcat} install
 
 %preun
 %stop_on_removal
@@ -88,10 +90,10 @@ fi
 %restart_on_update lmd
 
 %post web
-if [ -e /srv/tomcat6/webapps/ossadmin ]; then
-	rm -r /srv/tomcat6/webapps/ossadmin
+if [ -e /srv/%{tomcat}/webapps/ossadmin ]; then
+	rm -r /srv/%{tomcat}/webapps/ossadmin
 fi
-%restart_on_update tomcat6
+%restart_on_update %{tomcat}
 
 %postun
 %restart_on_update
@@ -116,7 +118,7 @@ fi
 %config /etc/apache2/vhosts.d/admin-ssl/jk.conf
 %config /etc/apache2/vhosts.d/oss-ssl/jk.conf
 %defattr(-,tomcat,root)
-/srv/tomcat6/webapps/ossadmin.war
+/srv/%{tomcat}/webapps/ossadmin.war
 %defattr(755,root,root)
 /srv/www/cgi-bin/*
 
