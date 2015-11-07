@@ -1,8 +1,9 @@
 # Make file for the SL System Managemant Daemon
 # Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 DESTDIR		= /
+TOMCAT		= "tomcat6"
 LMDDIR		= $(DESTDIR)/usr/share/lmd
-TOMCATROOT 	= $(DESTDIR)/srv/tomcat/webapps
+TOMCATROOT 	= $(DESTDIR)/srv/$(TOMCAT)/webapps
 REQPACKAGES     = $(shell cat REQPACKAGES)
 VERSION		= $(shell test -e ../VERSION && cp ../VERSION VERSION ; cat VERSION)
 RELEASE		= $(shell cat RELEASE)
