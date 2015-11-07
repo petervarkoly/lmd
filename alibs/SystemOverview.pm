@@ -141,7 +141,7 @@ sub default
 		}else{
 			$defpract = 'inactive';
 		}
-		@rcstatus = `rc$process status | grep running`;
+		@rcstatus = `/etc/init.d/$process status | grep running`;
 
 		if( scalar(@rcstatus)>=1 ){
 			$prcolor = 'blue';
