@@ -425,6 +425,7 @@ sub create_letters
 	push @ret, { name => 'store_text', value => 0, attributes => [ type => 'boolean', label => main::__('Store this text for later usage :') ] };
 	push @ret, { name => 'imp_log_file', value => $reply->{line}, attributes => [ type => 'hidden' ] };
 	#buttons
+	push @ret, { name   => 'new_user_only', value => 0, attributes => [ type => 'boolean', label => main::__('Create new user only :') ] };
 	push @ret, { action => 'create_pdf' };
 	push @ret, { action => 'my_cancel' };
 
@@ -475,76 +476,67 @@ sub create_pdf
 		$message->{lc($_)} = $value;
 	}
 
-	if( $importpath_file =~ /^\/(.*)\/$/){
-		my %hash;
-		my %head_h;
-		my $import_files = `ls $importpath_file*.txt`;
 
-		my @files = split("\n", $import_files );
-		my $head = `cat $files[0]`;
-		my ($hd, @tmp) = split("\n", $head);
-		my $sep = get_sep("$hd", $message);
-		my @head__ = split($sep, $hd);
-		my $i = 0;
-		my $user_login_pos;
-		foreach my $item (@head__){
-			$head_h{$i} = $item;
-			$user_login_pos = $i if(($item =~ /$message->{'uid'}/i) or ($item =~ /uid/i) or ($item eq "LOGIN"));
-			$i++;
-		}
-		foreach my $file (@files){
-			next if( $file !~ /(.*).txt$/);
-			my $file_content = `cat $file`;
-			my @splt_file_content = split("\n", $file_content);
-			shift(@splt_file_content);
-			foreach my $line (@splt_file_content){
-				if( $line !~ /^ $/ ){
-					my @sp_line = split($sep,$line);
-					foreach my $it (keys %head_h){
-						if( (exists($hash{$sp_line[$user_login_pos]}->{$head_h{$it}})) and ( $hash{$sp_line[$user_login_pos]}->{$head_h{$it}} ne $sp_line[$it]) ){
-							$hash{$sp_line[$user_login_pos]}->{$head_h{$it}} .= " ".$sp_line[$it];
-						}else{
-							$hash{$sp_line[$user_login_pos]}->{$head_h{$it}} = $sp_line[$it];
-						}
+	# select import file or all files
+	my @files = ();
+	if( $reply->{import_class} eq 'all' and $importpath_file =~ /^\/(.*)\/$/ ){
+		my $import_files = `ls $importpath_file*.txt`;
+		@files = split("\n", $import_files );
+	}else{
+		push @files, $importpath_file;
+	}
+
+	# create list
+	my %hash;
+	my %head_h;
+
+	my $head = `cat $files[0]`;
+	my ($hd, @tmp) = split("\n", $head);
+	my $sep = get_sep("$hd", $message);
+	my @head__ = split($sep, $hd);
+	my $i = 0;
+	my $user_login_pos;
+	foreach my $item (@head__){
+		$head_h{$i} = $item;
+		$user_login_pos = $i if(($item =~ /$message->{'uid'}/i) or ($item =~ /uid/i) or ($item eq "LOGIN"));
+		$i++;
+	}
+	foreach my $file (@files){
+		next if( $file !~ /(.*).txt$/);
+		my $file_content = `cat $file`;
+		my @splt_file_content = split("\n", $file_content);
+		shift(@splt_file_content);
+		foreach my $line (@splt_file_content){
+			if( $line !~ /^ $/ ){
+				my @sp_line = split($sep,$line);
+				foreach my $it (keys %head_h){
+					if( (exists($hash{$sp_line[$user_login_pos]}->{$head_h{$it}})) and ( $hash{$sp_line[$user_login_pos]}->{$head_h{$it}} ne $sp_line[$it]) ){
+						$hash{$sp_line[$user_login_pos]}->{$head_h{$it}} .= " ".$sp_line[$it];
+					}else{
+						$hash{$sp_line[$user_login_pos]}->{$head_h{$it}} = $sp_line[$it];
 					}
 				}
 			}
 		}
-		foreach my $head_it (sort keys %head_h){
-			$new_file_content .= $head_h{$head_it}.",";
-		}
-		my $class_ = uc($message->{'class'}); #uc(main::__('class'));
-		if( $new_file_content !~ /(.*)$class_(.*)/){
-			$new_file_content .= $class_.",";
-		}
-		$new_file_content .= "\n";
-
-		foreach my $item (keys %hash){
-			foreach my $head_it (sort keys %head_h){
-				$new_file_content .= $hash{$item}->{$head_h{$head_it}}.",";
-			}
-			$new_file_content .= "\n";
-		}
-	}else{
-		#One csv file:
-		my $file_content = cmd_pipe("cat $importpath_file");
-		my @splt_file_content = split("\n", $file_content);
-		my $hd = shift @splt_file_content;
-		my $sep = get_sep("$hd", $message);
-		$hd =~ s/$sep/,/g;
-		$new_file_content .= $hd;
-		my $class_ = uc($message->{'class'}); #uc(main::__('class'));
-		if( $new_file_content !~ /(.*)$class_(.*)/){
-			$new_file_content .= ",".$class_.",";
-		}
-		$new_file_content .= "\n";
-		foreach my $line (@splt_file_content){
-			if( $line !~ /^ $/ ){
-				$line =~ s/$sep/,/g;
-				$new_file_content .= $line."\n";
-			}
-		}
 	}
+	foreach my $head_it (sort keys %head_h){
+		$new_file_content .= $head_h{$head_it}.",";
+	}
+	my $class_ = uc($message->{'class'}); #uc(main::__('class'));
+	if( $new_file_content !~ /(.*)$class_(.*)/){
+		$new_file_content .= $class_.",";
+	}
+	$new_file_content .= "\n";
+
+	my $userpassword_ = uc($message->{'userpassword'}); #uc(main::__('userpassword'));
+	foreach my $item (keys %hash){
+		next if( $reply->{new_user_only} and !$hash{$item}->{$userpassword_} );
+		foreach my $head_it (sort keys %head_h){
+			$new_file_content .= $hash{$item}->{$head_h{$head_it}}.",";
+		}
+		$new_file_content .= "\n";
+	}
+
 #	Encode::_utf8_on($new_file_content);
 	write_file( $tmp_csv_file, $new_file_content);
 	my $format = `file -bi $tmp_csv_file`;
