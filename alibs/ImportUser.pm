@@ -425,7 +425,7 @@ sub create_letters
 	push @ret, { name => 'store_text', value => 0, attributes => [ type => 'boolean', label => main::__('Store this text for later usage :') ] };
 	push @ret, { name => 'imp_log_file', value => $reply->{line}, attributes => [ type => 'hidden' ] };
 	#buttons
-	push @ret, { name   => 'new_user_only', value => 0, attributes => [ type => 'boolean', label => main::__('Create new user only :') ] };
+	push @ret, { name   => 'new_user_only', value => 1, attributes => [ type => 'boolean', label => main::__('Create letters only for new users.') ] };
 	push @ret, { action => 'create_pdf' };
 	push @ret, { action => 'my_cancel' };
 
