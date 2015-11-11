@@ -547,7 +547,6 @@ sub create_pdf
         system("recode $format..utf8 $tmp_csv_file");
 	$ENV{LC_ALL} = '';
 
-	cmd_pipe("/usr/share/oss/tools/replace_javabirt_tmp_values.pl --javabirt_file=$report_url --lang=$lang" );
 	my $letter_txt = cmd_pipe("cat /usr/share/lmd/tools/JavaBirt/Reports/ImportUser_modul/letter_$lang.txt");
 	my $csv_file = `basename '$tmp_csv_file'`; chomp $csv_file;
 	my $cmd = 'java -jar /usr/share/lmd/tools/JavaBirt/JavaBirt.jar REPORT_URL='.$report_url.' COMMAND=EXECUTE OUTPUT=pdf CSV_HOME_DIR=/tmp CSV_FILE='.$csv_file.' PASSWORD_LETTER_TEXT="'.$letter_txt.'"';
