@@ -215,6 +215,7 @@ sub checkLogin
 <username>'.$params->{'username'}.'</username>
 <userpassword>'.$params->{'userpassword'}.'</userpassword>
 <ip>'.$this->{CGI}->remote_addr.'</ip>
+<logoffOther>1</logoffOther>
 </request>' ;
     sendRequest($REQUEST);
     if( !$SESSIONID ) {

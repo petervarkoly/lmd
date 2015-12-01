@@ -1608,6 +1608,19 @@ sub login
 	{#TODO Default role must be definable
 		$role = 'students';
 	}
+        if( defined $REQUEST->{logoffOther} && $REQUEST->{logoffOther} )
+        {
+                my $mesg = $oss->{LDAP}->search( base    => $oss->{SYSCONFIG}->{USER_BASE},
+                                          scope   => 'sub',
+                                          attrs   => ['uid','cn'],
+                                          filter  => "(configurationValue=LOGGED_ON=$ip)"
+                );
+                foreach my $e ( $mesg->entries )
+                {
+                        next if( $dn eq $e->dn() );
+                        $oss->{LDAP}->modify( $e->dn ,  delete    => { configurationValue => "LOGGED_ON=$ip" } );
+                }
+        }
 	$LANG = $result->{$dn}->{preferredlanguage}->[0] || 'EN';
 	if( $LANG =~ /(.*)_(.*)/){ $LANG = uc($1) };
 	$LANG = uc($LANG);
