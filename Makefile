@@ -176,10 +176,10 @@ test:
 	fi
 
 state:
-	diff -u lmd.pl      $(DESTDIR)/usr/sbin/
+	diff -u lmd.pl      $(DESTDIR)/usr/sbin/lmd.pl ; \
 	find tools  -type f  -exec diff -u {} $(LMDDIR)/{} \;
 	find lang   -type f  -exec diff -u {} $(LMDDIR)/{} \;
 	find alibs  -type f  -exec diff -u {} $(LMDDIR)/{} \;
 	find helper -type f  -exec diff -u {} $(LMDDIR)/{} \;
-	diff -u itool.pl    $(DESTDIR)/srv/www/cgi-bin/
+	diff -u itool.pl    $(DESTDIR)/srv/www/cgi-bin/itool.pl
 

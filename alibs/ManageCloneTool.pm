@@ -6,19 +6,35 @@ BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 package ManageCloneTool;
 
 use strict;
-use oss_base;
 use oss_utils;
 use Net::LDAP::Entry;
 use Data::Dumper;
-
 use vars qw(@ISA);
-@ISA = qw(oss_base);
+
+if( -e "/usr/share/oss/lib/oss_schools.pm" )
+{
+    use oss_schools;
+    @ISA = qw(oss_schools);
+}
+else
+{
+    use oss_base;
+    @ISA = qw(oss_base);
+}
 
 sub new
 {
     my $this    = shift;
     my $connect = shift || undef;
-    my $self    = oss_base->new($connect);
+    my  $self   = undef;
+    if( -e "/usr/share/oss/lib/oss_schools.pm" )
+    {
+       $self    = oss_schools->new($connect);
+    }
+    else
+    {
+       $self    = oss_base->new($connect);
+    }
     return bless $self, $this;
 }
 
@@ -31,6 +47,9 @@ sub interface
                 "insert",
                 "editHW",
                 "setHW",
+                "syncToSchools",
+                "search",
+                "startSync",
                 "startImaging",
 		"startMulticast",
 		"killMulticast",
@@ -60,6 +79,8 @@ sub getCapabilities
                 { allowedRole  => 'teachers,sysadmins' },
                 { category     => 'Network' },
 		{ order        => 20 },
+		{ variable     => [ "schoolTypes",  [ type => "list", size => '9', label=>"School Type" ] ] },
+		{ variable     => [ "schools",      [ type => "list", size => '20', multiple=>"true", label=>"School" ] ] },
 		{ variable     => [ 'partition',    [ type => 'boolean', label=>''] ]},
 		{ variable     => [ 'workstation',  [ type => 'boolean', label=>''] ]},
 		{ variable     => [ 'delete',       [ type => 'boolean', label=>''] ]},
@@ -106,10 +127,6 @@ sub default
 		}
 	}
 
-#	foreach my $HW ( @{$this->get_HW_configurations(0)}  )
-#	{
-#	   push @lines, { line => [ $HW->[0], { editHW => $HW->[1] }, { startImaging => 'Start Imaging' } ] };
-#	}
 	if( scalar(@lines) > 1 )
 	{
 		return [
@@ -257,6 +274,11 @@ sub editHW
 	push @r, { dn     => $reply->{line} };
 	push @r, { action => 'cancel' };
 	push @r, { name => 'action', value => "setHW", attributes => [ label => 'apply' ] };
+	if( -e "/usr/share/lmd/alibs/ManageSchools.pm" )
+	{
+	        push @r, { action => 'syncToSchools' };
+	}
+
 	return \@r;
 }
 
@@ -280,6 +302,39 @@ sub setHW
 		$this->add_config_value( $dn, "$reply->{new}->{new}->{key}", "$reply->{new}->{new}->{value}");
 	}
 	$this->editHW({ line=>$reply->{dn} });
+}
+
+sub syncToSchools
+{
+        my $this   = shift;
+        my $reply  = shift;
+
+        return [
+                { filter      => $this->{filter} || '*' },
+                { schoolTypes => $this->schoolTypes() },
+               { dn          => $reply->{dn} },
+                { rightaction => 'search' },
+                { rightaction => 'cancel' }
+        ]
+
+}
+
+sub search
+{
+        my $this   = shift;
+        my $reply  = shift;
+       return [
+               { schools     => $this->searchSchools(1,$reply->{schoolTypes},$reply->{filter}) },
+               { dn          => $reply->{dn} },
+               { rightaction => 'startSync' },
+               { rightaction => 'cancel' }
+       ];
+}
+
+sub startSync
+{
+        my $this   = shift;
+        my $reply  = shift;
 }
 
 sub realy_delete_img
