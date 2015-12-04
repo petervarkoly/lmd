@@ -323,18 +323,84 @@ sub search
 {
         my $this   = shift;
         my $reply  = shift;
-       return [
-               { schools     => $this->searchSchools(1,$reply->{schoolTypes},$reply->{filter}) },
-               { dn          => $reply->{dn} },
-               { rightaction => 'startSync' },
-               { rightaction => 'cancel' }
-       ];
+	return [
+		{ schools     => $this->searchSchools(1,$reply->{schoolTypes},$reply->{filter}) },
+		{ date        => '' },
+		{ time        => '' },
+		{ promptly    => 1  },
+		{ dn          => $reply->{dn} },
+		{ rightaction => 'startSync' },
+		{ rightaction => 'cancel' }
+	];
 }
 
 sub startSync
 {
-        my $this   = shift;
-        my $reply  = shift;
+        my $this    = shift;
+        my $reply   = shift;
+	my $hw      = $reply->{dn};
+        my $time   = $reply->{time}.' '.$reply->{date};
+        if( $reply->{promptly} )
+        {
+                $time = 'now';
+        }
+	my $WARNING = '';
+	my $newhw   = 'cephalix'.$hw;
+	my $hwConf  = $this->get_entry( 'configurationKey='.$hw.','.$this->{SYSCONFIG}->{COMPUTERS_BASE} );
+
+	foreach my $school ( split /\n/, $reply->{schools} )
+	{
+		my ($ldap, $sdn) = $this->connectSchool($school);
+		my $sCN  =get_name_of_dn($school);
+		if( !$ldap ) {
+			$WARNING .= "Can not connect the school: $sCN<br>";
+			$WARNING .= $this->{ERROR}->{code}."<br>" if defined $this->{ERROR}->{code};
+			$WARNING .= $this->{ERROR}->{text}."<br>" if defined $this->{ERROR}->{text};
+			next;
+
+		}
+		my $result = $ldap->add(
+			dn   => "configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+			attr => [
+				objectclass        => $hwConf->{objectclass},
+				configurationKey   => $newhw,
+				description        => 'Cephalix '.$hwConf->{description}->[0],
+				configurationValue => $hwConf->{configurationvalue}
+			]
+		);
+		if( $result->code == 68 )
+		{
+			$WARNING .= 'Image '.$hwConf->{description}->[0].' in school '.$sCN.' do exists allready. Synchronization was started.<br>';
+			$ldap->modify(
+				"configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+				replace => { configurationValue => $hwConf->{configurationvalue} }
+			);
+			$ldap->modify(
+				"configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+				replace => { description => 'Cephalix '.$hwConf->{description}->[0] }
+			);
+		}
+		elsif( $result->code )
+                {
+                    $this->ldap_error($result);
+                    return {
+                                TYPE    => 'ERROR',
+                                MESSAGE => $this->{ERROR}->{text}
+                        };
+                }
+		my $command = "rsync -aAv /srv/itool/images/$hw/ $sCN:/srv/itool/swrepository/$hwnew/;"
+		my $job = create_job($command, "Sync Image '$swn' to '$school'","$time");
+		$this->add_value_to_vendor_object($school,'CEPHALIX','JOBS',$job );
+		sleep(5);
+	}
+        if( $WARNING )
+        {
+            return {
+			TYPE                => 'NOTICE' ,
+			MESSAGE_NOTRANSLATE => $WARNING
+                };
+        }
+        $this->default();
 }
 
 sub realy_delete_img
