@@ -101,6 +101,9 @@ sub getCapabilities
 		{ variable     => [ 'version',              [ type => 'label'] ]},
 		{ variable     => [ 'type',                 [ type => 'label'] ]},
 		{ variable     => [ 'category_name',        [ type => 'label'] ]},
+                { variable     => [ "date",             [ type => "date" ] ] },
+                { variable     => [ "time",             [ type => "time" ] ] },
+                { variable     => [ "promptly",         [ type => "boolean" ] ] }
 	];
 }
 
@@ -353,11 +356,20 @@ sub startSync
 		my ($ldap, $sdn) = $this->connectSchool($school);
 		my $sCN  =get_name_of_dn($school);
 		if( !$ldap ) {
+			$WARNING .= "=================================================================<br>";
 			$WARNING .= "Can not connect the school: $sCN<br>";
 			$WARNING .= $this->{ERROR}->{code}."<br>" if defined $this->{ERROR}->{code};
 			$WARNING .= $this->{ERROR}->{text}."<br>" if defined $this->{ERROR}->{text};
 			next;
 
+		}
+		if( -e "/var/adm/oss/$sCN-$newhw" )
+		{
+			my $tmp   = `find /var/adm/oss/$sCN-$newhw -printf "%AY-%Am-%Ad %AH:%AM"`;
+			$WARNING .= "=================================================================<br>";
+			$WARNING .= "Synnchronization into $sCN was already started at: $tmp.<br>";
+			$WARNING .= "If this is false you have to remove /var/adm/oss/$sCN-$newhw on CEPHALIX.<br>";
+			next;
 		}
 		my $result = $ldap->add(
 			dn   => "configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
@@ -370,6 +382,7 @@ sub startSync
 		);
 		if( $result->code == 68 )
 		{
+			$WARNING .= "=================================================================<br>";
 			$WARNING .= 'Image '.$hwConf->{description}->[0].' in school '.$sCN.' do exists allready. Synchronization was started.<br>';
 			$ldap->modify(
 				"configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
@@ -388,8 +401,10 @@ sub startSync
                                 MESSAGE => $this->{ERROR}->{text}
                         };
                 }
-		my $command = "rsync -aAv /srv/itool/images/$hw/ $sCN:/srv/itool/swrepository/$hwnew/;"
-		my $job = create_job($command, "Sync Image '$swn' to '$school'","$time");
+		my $command = "touch /var/adm/oss/$sCN-$newhw ;
+			       rsync -aAv /srv/itool/images/$hw/ $sCN:/srv/itool/swrepository/images/$newhw/ ;
+			       rm -f /var/adm/oss/$sCN-$newhw ;";
+		my $job = create_job($command, "Sync Image '$hw' to '$school'","$time");
 		$this->add_value_to_vendor_object($school,'CEPHALIX','JOBS',$job );
 		sleep(5);
 	}
