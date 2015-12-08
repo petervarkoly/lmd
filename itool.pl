@@ -47,8 +47,13 @@ if( $action eq 'getHW' )
 	{
 	   $ip  = $cgi->remote_addr();
 	}
-	my $wdn = $oss->get_host($ip);
-	my $hw  = $oss->get_config_value($wdn,'HW');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
+	my $hw  = $oss->get_config_value($wsDN,'HW');
 
 	print $cgi->header(-charset=>'utf-8');
 	print $cgi->start_html(-title=>'itool');
@@ -68,8 +73,9 @@ if( $action eq 'getPCN' )
         {
            $ip  = $cgi->remote_addr();
         }
-        my $wdn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wdn, 'cn');
+        my $wsDN = $oss->get_host($ip);
+	my $tmp = get_name_of_dn($wsDN);
+	$tmp =~ s/-wlan$//;
 	if($tmp){
 		$pc_name = $tmp;
 	}
@@ -114,8 +120,12 @@ if( $action eq 'getINSTALLATIONS' )
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 
 	# get samba domain
@@ -184,8 +194,12 @@ if( $action eq 'getSwRepoInfo' )
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 
 	# get samba domain
@@ -323,8 +337,12 @@ if( $action eq 'setPkgStatus' )
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 	my $userDn = $oss->get_user_dn($wsName);
 	my $wsUserDn = 'o=oss,'.$userDn;
@@ -430,8 +448,12 @@ if( $action eq 'setManualInstalledPkgStatus' )
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 
 	# get samba domain
@@ -534,8 +556,12 @@ if( $action eq 'setClientScriptStatus' ){
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 	my $userDn = $oss->get_user_dn($wsName);
 	my $wsUserDn = 'o=oss,'.$userDn;
@@ -617,8 +643,12 @@ if( $action eq 'createPkg' )
 
 	# get host name
 	my $wsName = "-";
-	my $wsDn = $oss->get_host($ip);
-	my $tmp = $oss->get_attribute( $wsDn, 'cn');
+	my $wsDN = $oss->get_host($ip);
+	my $tmp  = get_name_of_dn($wsDN);
+	if( $tmp =~ s/-wlan$// )
+	{
+	   $wsDN = $oss->get_host($tmp);
+	}
 	$wsName = $tmp if($tmp);
 	my $userDn = $oss->get_user_dn($wsName);
 	my $wsUserDn = 'o=oss,'.$userDn;

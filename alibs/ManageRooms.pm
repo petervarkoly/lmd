@@ -603,6 +603,39 @@ sub editPC
 	my $reply  = shift;
 	my $dn 	   = $reply->{line} || $reply->{dn};
 	my $hw     = $this->get_config_value($dn,'HW');
+	my $cn     = get_name_of_dn($dn);
+	my $wlanDN = $this->get_host($cn.'-wlan');
+        my $supmac   = $reply->{supmac} || 0;
+	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
+        if( defined $wlanDN )
+	{
+	    my $mac     = $oss->get_attribute($wlanDN,'dhcpHWAddress');
+	    $mac =~ s/ethernet //;
+	    if( $supmac and ( $mac ne $supmac ) )
+	    {
+	        if( check_mac($supmac) )
+		{#Additional MAC address was changed.
+			$this->set_attribute($wlanDN,'dhcpHWAddress',"ethernet $supmac");
+		}
+		else
+		{
+			$supmac = "Mac address is invalid:".$supmac;
+		}
+	    }
+	}
+	elsif( check_mac($supmac) )
+	{#Additional MAC address was created.
+		my ($name,$ip) = $this->get_next_free_pc(get_parent_dn($dn));
+		if( !defined $ip )
+		{
+			push @ret, { WARNING => 'There is no more free IP-address in this room' };
+		}
+		else
+		{
+			$cn=$cn.'-wlan.'.$this->{SYSCONFIG}->{SCHOOL_DOMAIN};
+			$this->add_host($cn,$ip,$supmac,$hw,0,1);
+		}
+	}
         my %parts  = ();
 	my %os     = ();
 	my %join   = ();
@@ -623,7 +656,6 @@ sub editPC
                   $join{$1} = $2;
                }
         }
-	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
 	$this->set_config_value($dn,'SERIALNUMBER',$reply->{serial})     if( defined $reply->{serial} );
 	$this->set_config_value($dn,'INVENTARNUMBER',$reply->{inventar}) if( defined $reply->{inventar} );
 	$this->set_config_value($dn,'LOCALITY',$reply->{locality})       if( defined $reply->{locality} );
@@ -641,6 +673,7 @@ sub editPC
 				     attributes => [ type => "string", label => $os{$p}.' '.$parts{$p}." ProductID" ] };
 		}
 	}
+	push @ret, { supmac => $supmac };
 	push @ret, { rdn    => get_parent_dn($dn) };
 	push @ret, { dn     => $dn };
 	push @ret, { action => 'cancel' };
@@ -1850,6 +1883,39 @@ sub get_free_pcs_of_room
 	my $freeze = encode_base64(freeze(\@hosts),"");
 	main::AddSessionDatas($freeze,'hosts');
 	return @hosts;
+}
+
+sub get_next_free_pc 
+{
+        my $this = shift;
+        my $room = shift;
+        my @hosts= ();
+        my $roomnet    = $this->get_attribute($room,'dhcpRange').'/'.$this->get_attribute($room,'dhcpNetMask');
+        if( $roomnet !~ /\d+\.\d+\.\d+\.\d+\/\d+/ ) {
+                return @hosts;
+        }
+        my $roompref   = $this->get_attribute($room,'description');
+        my $block      = new Net::Netmask($roomnet);
+        my %lhosts     = ();
+        my $schoolnet  = $this->get_school_config('SCHOOL_NETWORK').'/'.$this->get_school_config('SCHOOL_NETMASK');
+        my $sblock     = new Net::Netmask($schoolnet);
+        my $base       = $sblock->base();
+        my $broadcast  = $sblock->broadcast();
+        my $counter    = -1;
+        foreach my $i ( $block->enumerate() )
+        {
+                if(  $i ne $base && $i ne $broadcast )
+                {
+                        $counter ++;
+                        next if ( ip_exists($i) );
+                        next if ( $roompref =~ /^SERVER_NET/ && $counter < 10 );
+                        my $hostname = lc(sprintf("$roompref-pc%02d",$counter));
+                        $hostname =~ s/_/-/;
+                        next if ( host_exists($hostname) );
+                        return ( $hostname, $i );
+                }
+        }
+        return ();
 }
 
 sub set_sofware
