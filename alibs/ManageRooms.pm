@@ -538,6 +538,7 @@ sub room
 	foreach my $dn ( @{$this->get_workstations_of_room($rdn)} )
 	{
 		my $hostname = $this->get_attribute($dn,'cn');
+		next if( $hostname =~ /-wlan$/);
 		my $hwaddress= $this->get_attribute($dn,'dhcpHWAddress');
 		my $ipaddr   = $this->get_attribute($dn,'dhcpStatements');
 		$hwaddress =~ s/ethernet //i;
@@ -605,25 +606,29 @@ sub editPC
 	my $hw     = $this->get_config_value($dn,'HW');
 	my $cn     = get_name_of_dn($dn);
 	my $wlanDN = $this->get_host($cn.'-wlan');
-        my $supmac   = $reply->{supmac} || 0;
-	my @ret      = ( { subtitle => get_name_of_dn($dn) } );
+        my $wlanmac= $reply->{wlanmac} || '';
+	my @ret    = ( { subtitle => get_name_of_dn($dn) } );
         if( defined $wlanDN )
 	{
-	    my $mac     = $oss->get_attribute($wlanDN,'dhcpHWAddress');
+	    my $mac     = $this->get_attribute($wlanDN,'dhcpHWAddress');
 	    $mac =~ s/ethernet //;
-	    if( $supmac and ( $mac ne $supmac ) )
+	    if( $wlanmac and ( $mac ne $wlanmac ) )
 	    {
-	        if( check_mac($supmac) )
+	        if( check_mac($wlanmac) )
 		{#Additional MAC address was changed.
-			$this->set_attribute($wlanDN,'dhcpHWAddress',"ethernet $supmac");
+			$this->set_attribute($wlanDN,'dhcpHWAddress',"ethernet $wlanmac");
 		}
 		else
 		{
-			$supmac = "Mac address is invalid:".$supmac;
+			$wlanmac = "Mac address is invalid:".$wlanmac;
 		}
 	    }
+	    else
+	    {
+	    	$wlanmac = $mac;
+	    }
 	}
-	elsif( check_mac($supmac) )
+	elsif( check_mac($wlanmac) )
 	{#Additional MAC address was created.
 		my ($name,$ip) = $this->get_next_free_pc(get_parent_dn($dn));
 		if( !defined $ip )
@@ -633,7 +638,9 @@ sub editPC
 		else
 		{
 			$cn=$cn.'-wlan.'.$this->{SYSCONFIG}->{SCHOOL_DOMAIN};
-			$this->add_host($cn,$ip,$supmac,$hw,0,1);
+			$this->add_host($cn,$ip,$wlanmac,'wlanclone',0,1);
+        		$this->rc("named","restart");
+        		$this->rc("dhcpd","restart");
 		}
 	}
         my %parts  = ();
@@ -673,7 +680,7 @@ sub editPC
 				     attributes => [ type => "string", label => $os{$p}.' '.$parts{$p}." ProductID" ] };
 		}
 	}
-	push @ret, { supmac => $supmac };
+	push @ret, { wlanmac=> $wlanmac };
 	push @ret, { rdn    => get_parent_dn($dn) };
 	push @ret, { dn     => $dn };
 	push @ret, { action => 'cancel' };
@@ -1907,11 +1914,11 @@ sub get_next_free_pc
                 if(  $i ne $base && $i ne $broadcast )
                 {
                         $counter ++;
-                        next if ( ip_exists($i) );
+                        next if ( $this->ip_exists($i) );
                         next if ( $roompref =~ /^SERVER_NET/ && $counter < 10 );
                         my $hostname = lc(sprintf("$roompref-pc%02d",$counter));
                         $hostname =~ s/_/-/;
-                        next if ( host_exists($hostname) );
+                        next if ( $this->host_exists($hostname) );
                         return ( $hostname, $i );
                 }
         }
