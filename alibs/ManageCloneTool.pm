@@ -402,7 +402,7 @@ sub startSync
                         };
                 }
 		my $command = "touch /var/adm/oss/$sCN-$newhw ;
-			       rsync -aAv /srv/itool/images/$hw/ $sCN:/srv/itool/swrepository/images/$newhw/ ;
+			       rsync -aAv /srv/itool/images/$hw/ $sCN:/srv/itool/images/$newhw/ ;
 			       rm -f /var/adm/oss/$sCN-$newhw ;";
 		my $job = create_job($command, "Sync Image '$hw' to '$school'","$time");
 		$this->add_value_to_vendor_object($school,'CEPHALIX','JOBS',$job );
