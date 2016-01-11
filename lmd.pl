@@ -1662,7 +1662,7 @@ sub login
 			@app = split /,/,$vap->[0];
 		}
 	}
-        if( $result->{$dn}->{role}->[0] eq 'teachers' and defined $MENU->{all}->{CEPHALIX}->{CEPHALIX_ShowAnnouncement} )
+        if( $result->{$dn}->{role}->[0] eq 'teachers' and defined $MENU->{all}->{CEPHALIX}->{CEPHALIX_Announcement} )
         { #For teachers musst be the CEPHALIXShowAnnouncement the default application.
                 @app = ('CEPHALIX','CEPHALIXShowAnnouncement','default');
         }
