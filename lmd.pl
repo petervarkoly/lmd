@@ -1125,9 +1125,10 @@ sub GetMenu
     $writer->startTag("reply", name=>"getMenu", sessionID=>$SESSIONID, role=>"$role", result=> "0" );
     foreach my $category ( @CATEGORIES )
     {
-	next if ( ! defined $MENU->{$role}->{$category} );
+	next if ( ! defined $MENU->{$role}->{$category} && ! defined $MENU->{'all'}->{$category} );
     	$writer->startTag("category", name => $category, label => __($category,'GetMenu') );
 	my @apps = sort { $MENU->{$role}->{$category}->{$a}->{order} <=> $MENU->{$role}->{$category}->{$b}->{order} } keys %{$MENU->{$role}->{$category}};
+        push @apps, sort { $MENU->{'all'}->{$category}->{$a}->{order} <=> $MENU->{'all'}->{$category}->{$b}->{order} } keys %{$MENU->{'all'}->{$category}};
 	foreach my $app ( @apps )
 	{
 		#$writer->dataElement('application',$app, label => __($app,'GetMenu'), order => $MENU->{$role}->{$category}->{$app}->{order} );
@@ -1137,6 +1138,10 @@ sub GetMenu
 		{
 		    $writer->dataElement('description',__($MENU->{$role}->{$category}->{$app}->{description},$app));
 		}
+                elsif( defined $MENU->{all}->{$category}->{$app}->{description} )
+                {
+                    $writer->dataElement('description',__($MENU->{all}->{$category}->{$app}->{description},$app));
+                }
 		else
 		{
 		    $writer->dataElement('description',__($MENU->{$role}->{$category}->{$app}->{title},$app));
@@ -1601,6 +1606,7 @@ sub login
 	my @reply= ();
 	$SESSIONID   = md5_hex($rand.$result);
 	my $role = $result->{$dn}->{role}->[0] || 'students';
+	my $ip   = $REQUEST->{ip};
 	#Evaluate role map
 	$role = $ROLEMAP{$role} if (defined $ROLEMAP{$role} );
 	#If there is no menu for this role take it from students
@@ -1656,6 +1662,11 @@ sub login
 			@app = split /,/,$vap->[0];
 		}
 	}
+        if( $result->{$dn}->{role}->[0] eq 'teachers' and defined $MENU->{all}->{CEPHALIX}->{CEPHALIX_Announcement} )
+        { #For teachers musst be the CEPHALIXShowAnnouncement the default application.
+                @app = ('CEPHALIX','CEPHALIXShowAnnouncement','default');
+        }
+
 	foreach my $class ( $oss->get_classes_of_user($dn) )
 	{
 		push @reply, { class   => get_name_of_dn($class->[0]) };
