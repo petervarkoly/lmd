@@ -372,7 +372,7 @@ sub startSync
 			next;
 		}
 		my $result = $ldap->add(
-			dn   => "configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+			dn   => "configurationKey=$newhw,ou=Computers,$sdn",
 			attr => [
 				objectclass        => $hwConf->{objectclass},
 				configurationKey   => $newhw,
@@ -385,11 +385,11 @@ sub startSync
 			$WARNING .= "=================================================================<br>";
 			$WARNING .= 'Image '.$hwConf->{description}->[0].' in school '.$sCN.' do exists allready. Synchronization was started.<br>';
 			$ldap->modify(
-				"configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+				"configurationKey=$newhw,ou=Computers,$sdn",
 				replace => { configurationValue => $hwConf->{configurationvalue} }
 			);
 			$ldap->modify(
-				"configurationKey=$newhw,o=osssoftware,ou=Computers,$sdn",
+				"configurationKey=$newhw,ou=Computers,$sdn",
 				replace => { description => 'Cephalix '.$hwConf->{description}->[0] }
 			);
 		}
