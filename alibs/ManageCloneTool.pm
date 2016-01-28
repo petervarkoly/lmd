@@ -13,12 +13,12 @@ use vars qw(@ISA);
 
 if( -e "/usr/share/oss/lib/oss_schools.pm" )
 {
-    use oss_schools;
+    require oss_schools;
     @ISA = qw(oss_schools);
 }
 else
 {
-    use oss_base;
+    require oss_base;
     @ISA = qw(oss_base);
 }
 
