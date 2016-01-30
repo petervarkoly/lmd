@@ -155,7 +155,7 @@ if( ! $DBCON )
 	$DBUSER= 'root';
 	($DBPW)= parse_file('/root/.my.cnf',"password=");
 }
-$DBH = DBI->connect( $DBCON, $DBUSER, $DBPW);
+$DBH = DBI->connect( $DBCON, $DBUSER, $DBPW, { RaiseError => 1, AutoCommit => 0 });
 $DBH->do("SET CHARACTER SET utf8");
 $DBH->do("SET NAMES utf8");
 
@@ -316,6 +316,7 @@ if( defined $options{'init'} )
 			}
 		}
 	}
+	$DBH->commit;
 	$DBH->disconnect;
 	exit 0;
 }
