@@ -1532,14 +1532,14 @@ sub setWlanUser
 	my @users = split /\n/, $reply->{users} || ();
 	my $HOSTDN = '';
 	foreach my $udn ( @users ) {
-		$this->{LDAP}->modify($udn, delete => { rassAccess => 'no' } );
-		$this->{LDAP}->modify($udn, delete => { rassAccess => 'all' } );
+		$this->{LDAP}->modify($udn, delete => { rasAccess => 'no' } );
+		$this->{LDAP}->modify($udn, delete => { rasAccess => 'all' } );
 	        foreach my $hdn ( @{thaw(decode_base64(main::GetSessionDatas('HOSTDNs')))} ) {
 			my $HW    = uc($this->get_attribute($hdn,'dhcpHWAddress'));
 			$HOSTDN = $hdn;
 			$HW =~ s/ethernet //i;
         		$HW =~ s/:/-/g;
-			$this->{LDAP}->modify($udn, add    => { rassAccess => $HW } );
+			$this->{LDAP}->modify($udn, add    => { rasAccess => $HW } );
 		}
 	}
 	if( $reply->{mdm} )
