@@ -212,6 +212,9 @@ if( $action eq 'getSwRepoInfo' )
 		$sambaDomain = $entry->get_value('sambaDomainName');
 	}
 
+	# get manual installed software
+	my $manualinstalledsw = $oss->get_school_config('SCHOOL_CLIENTINSTALL_CHECK_MANUAL_INSTALLED_SOFTWARE', $oss->{LDAP_BASE}) || 'yes';
+
 	# get package install status
 	my %tmpHash;
 	my $userDn = $oss->get_user_dn($wsName);
@@ -302,7 +305,7 @@ if( $action eq 'getSwRepoInfo' )
 	print "\r\n";                         # empty line is required between headers
 	print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
 	print '<itool>'."\n";
-	print ' <info auth="successfully" hostname="'.$wsName.'" domainname="'.$sambaDomain.'" />'."\n";
+	print ' <info auth="successfully" hostname="'.$wsName.'" domainname="'.$sambaDomain.'" manualinstalledsw="'.$manualinstalledsw.'" />'."\n";
 	foreach my $item (sort {$a<=>$b} keys %hash){
 		my $line = ' <package id="'.$hash{$item}->{id}.'">';
 		$line .= '<pkgStatus>'.$hash{$item}->{status}.'</pkgStatus>';
