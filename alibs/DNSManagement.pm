@@ -301,11 +301,16 @@ sub edit_hosts
 	else
 	{
 		push @hosts,{ head => ['RelativeDomainName', 'aRecord', 'delete'] };
+		my $dns = {};
 		foreach my $entry ($mesg->entries){
-			my $host_dn = $entry->dn;
-			my $subdomain_ip = $this->get_attribute( $host_dn,'aRecord');
-			my $rel_dom_name = $this->get_attribute( $host_dn,'relativeDomainName');
-
+			my $rel_dom_name = $entry->get_value('relativeDomainName');
+			$dns->{$rel_dom_name}->{host_dn} = $entry->dn;
+			$dns->{$rel_dom_name}->{ip}      = $entry->get_value('aRecord');
+		}
+		foreach my $rel_dom_name ( sort keys %$dns )
+		{
+			my $host_dn = $dns->{$rel_dom_name}->{host_dn};
+			my $subdomain_ip = $dns->{$rel_dom_name}->{ip};
 			push @hosts,{ line=> [ "$host_dn",
 						{ relative_domain_name => "$rel_dom_name" },
 						{ name => 'aRecord', value => "$subdomain_ip", attributes => [ type => 'label']},
