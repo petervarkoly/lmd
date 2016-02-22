@@ -282,6 +282,8 @@ if( defined $options{'init'} )
 	$DBH->do("DELETE from lang");
 	$DBH->disconnect;
         $DBH = DBI->connect( $DBCON, $DBUSER, $DBPW, { RaiseError => 0, AutoCommit => 0 });
+        $DBH->do("SET CHARACTER SET utf8");
+        $DBH->do("SET NAMES utf8");
 	AddSessionDatas(encode_base64(freeze($INTERFACE),''),'INTERFACE','BASE');
 	AddSessionDatas(encode_base64(freeze($CAPABILITIES),''),'CAPABILITIES','BASE');
 	AddSessionDatas(encode_base64(freeze($VARIABLES),''),'VARIABLES','BASE');
