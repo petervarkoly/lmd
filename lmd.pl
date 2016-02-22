@@ -155,7 +155,7 @@ if( ! $DBCON )
 	$DBUSER= 'root';
 	($DBPW)= parse_file('/root/.my.cnf',"password=");
 }
-$DBH = DBI->connect( $DBCON, $DBUSER, $DBPW, { RaiseError => 1, AutoCommit => 0 });
+$DBH = DBI->connect( $DBCON, $DBUSER, $DBPW);
 $DBH->do("SET CHARACTER SET utf8");
 $DBH->do("SET NAMES utf8");
 
@@ -280,6 +280,8 @@ if( defined $options{'init'} )
 
 	#Initialize the translations
 	$DBH->do("DELETE from lang");
+	$DBH->disconnect;
+        $DBH = DBI->connect( $DBCON, $DBUSER, $DBPW, { RaiseError => 0, AutoCommit => 0 });
 	AddSessionDatas(encode_base64(freeze($INTERFACE),''),'INTERFACE','BASE');
 	AddSessionDatas(encode_base64(freeze($CAPABILITIES),''),'CAPABILITIES','BASE');
 	AddSessionDatas(encode_base64(freeze($VARIABLES),''),'VARIABLES','BASE');
