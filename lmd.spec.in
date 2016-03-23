@@ -98,6 +98,10 @@ if [ -e /srv/%{tomcat}/webapps/ossadmin ]; then
 	rm -r /srv/%{tomcat}/webapps/ossadmin
 fi
 %restart_on_update %{tomcat}
+if [ -e /srv/www/cgi-bin/login.pl ]; then
+	rm /srv/www/cgi-bin/login.pl
+fi
+ln /srv/www/cgi-bin/ossmobile.pl /srv/www/cgi-bin/login.pl
 
 %postun
 %restart_on_update
