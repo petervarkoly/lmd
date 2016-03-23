@@ -607,6 +607,7 @@ sub editPC
 	my $cn     = get_name_of_dn($dn);
 	my $wlanDN = $this->get_host($cn.'-wlan');
         my $wlanmac= $reply->{wlanmac} || '';
+	   $wlanmac=~ s/-/:/g;
 	my @ret    = ( { subtitle => get_name_of_dn($dn) } );
         if( defined $wlanDN )
 	{
@@ -776,7 +777,8 @@ sub modifyRoom
 			$swinstall{$dn}->{new_hw} = $reply->{ws}->{$dn}->{hwconfig};
 		}
 
-		my $hw     = $reply->{ws}->{$dn}->{hwaddress};
+		my $hw = $reply->{ws}->{$dn}->{hwaddress};
+		$hw =~ s/-/:/g;
 		if( check_mac( $hw ) )
 		{
 			my $result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DHCP_BASE},
@@ -1219,6 +1221,7 @@ sub addPC
 	{
 		my ( $mac, $inventar, $serial ) = split /;/,$hw;
 		$hw = uc($mac);
+		$hw =~ s/-/:/g;
 		if( !check_mac($hw) )
 		{
 		    return { TYPE => 'ERROR' ,
