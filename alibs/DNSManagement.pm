@@ -496,7 +496,7 @@ sub edit_records
 		}
 	}
 
-	push @ret, { subtitle => 'Edite Records' };
+	push @ret, { subtitle => 'Edit Records' };
         push @ret, { label => main::__('domain_name').": $reply->{line}"};
 
 	foreach my $attr (keys %records_hash){
