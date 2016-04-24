@@ -52,6 +52,7 @@ sub getCapabilities
                 { category     => 'User' },
 		{ order        => 30 },
                 { variable     => [ "mustchange",      [ type => "boolean" ] ] },
+                { variable     => [ "resetPW",         [ type => "boolean" ] ] },
                 { variable     => [ "full",            [ type => "boolean" , label=>"This list contains all user" ] ] },
                 { variable     => [ "test",            [ type => "boolean" , label=>"Try only what would happen"] ] },
                 { variable     => [ "alias",           [ type => "boolean" ] ] },
@@ -127,6 +128,7 @@ sub default
 		{ full	       => 0 },
 		{ alias	       => 0 },
 		{ mustchange   => 0 },
+		{ resetPW      => 0 },
 		{ userpassword => '' },
 		{ mailenabled  => \@mailenabled },
                 { action       => "cancel" },
@@ -174,6 +176,10 @@ sub import
 	if( $reply->{mustchange} )
 	{
 		$attributes .= ' --mustchange';
+	}
+	if( $reply->{resetPW} )
+	{
+		$attributes .= ' --resetPW';
 	}
 	if( ! $reply->{test} )
 	{
