@@ -117,7 +117,7 @@ ln /srv/www/cgi-bin/ossmobile.pl /srv/www/cgi-bin/login.pl
 /etc/init.d/lmd
 /usr/sbin/lmd.pl
 /usr/share/oss/tools/enhance_translation.pl
-/srv/www/admin/ossmobile.css
+%config(noreplace) /srv/www/admin/ossmobile.css
 %dir /srv/www/admin/images/
 /srv/www/admin/images/top_bgimage.jpg
 

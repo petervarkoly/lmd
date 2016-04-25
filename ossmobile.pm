@@ -144,7 +144,7 @@ sub login
     print     $CGI->start_table();
     print         $CGI->start_Tr({-class=>"ContentLine"});
     print             $CGI->start_td({-class=>'AdminHead', -colspan=>'2'});
-    print		  "Internet Anmeldeseite";
+    print		  "Internetanmeldung";
     print             $CGI->end_td();
     print         $CGI->end_Tr();
 
