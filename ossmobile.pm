@@ -39,7 +39,7 @@ my $DEBUGFILE	= "/tmp/log.ossmobile";
 my $PORT        = "1967";
 my $ADDRESS     = "localhost";
 my $SOCKET      = "/var/run/lmd.sock";
-my $APPNAME     = "Linux System Managemant";
+my $APPNAME     = "OSS";
 my $SESSIONID   = undef;
 my $ACTION      = undef;
 my $APPLICATION = undef;
@@ -142,6 +142,12 @@ sub login
     print '<center>';
     print $CGI->start_form(-action=>'/cgi-bin/ossmobile.pl', -target=>'_top', -name=>'login_form');
     print     $CGI->start_table();
+    print         $CGI->start_Tr({-class=>"ContentLine"});
+    print             $CGI->start_td({-class=>'AdminHead', -colspan=>'2'});
+    print		  "Internet Anmeldeseite";
+    print             $CGI->end_td();
+    print         $CGI->end_Tr();
+
     print         $CGI->start_Tr({-class=>"ContentLine"});
     print             $CGI->start_td({-class=>'ContentLabel'});
     print		  "Benutzername:";
@@ -343,14 +349,18 @@ Debug( "name=>$act, application=>$appl, sessionID=>$SESSIONID , ip=>".$this->{CG
     print '<center>';
     print $CGI->start_multipart_form(-action=>'/cgi-bin/ossmobile.pl', -target=>'_top', -name=>'menu');
     print     $CGI->start_table({-class=>'AdminBorder'});
-    print         $CGI->start_Tr();
-    print             $CGI->start_td({-class=>'AdminHead',-colspan=>$colspan});
-    print		  $CGI->a({-class=>'HeadMenuItem',-href =>'/cgi-bin/ossmobile.pl?ACTION=logout&SESSIONID='.$SESSIONID},"Abmelden");
-    print		  getSession();
-    print             $CGI->end_td();
-    print         $CGI->end_Tr();
+#    print         $CGI->start_Tr();
+#    print             $CGI->start_td({-class=>'AdminHead',-colspan=>$colspan});
+#    print		  $CGI->a({-class=>'HeadMenuItem',-href =>'/cgi-bin/ossmobile.pl?ACTION=logout&SESSIONID='.$SESSIONID},"Abmelden");
+#    print		  getSession();
+#    print             $CGI->end_td();
+#    print         $CGI->end_Tr();
     my $main_menu = $CGI->start_table({-class=>'MainMenu'});
     my $sub_menu  = $CGI->start_table({-class=>'SubMenu'});
+
+    $main_menu .= $CGI->Tr({}, $CGI->td({-class=>'ActivSubMenuItem'},
+                          $CGI->a({-class=>'HeadMenuItem',-href =>'/cgi-bin/ossmobile.pl?ACTION=logout&SESSIONID='.$SESSIONID},"Abmelden")
+                   ));
     foreach my $section ( keys %{$MENU} )
     {
 #	if( $sect eq $section )
