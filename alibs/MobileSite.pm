@@ -136,7 +136,6 @@ sub showRoomLoggedin
         }
         else
         {
-
                 push @ret, { subtitle => "$room_name"};
         }
 
@@ -144,7 +143,15 @@ sub showRoomLoggedin
         {
                 foreach my $logged_user (@{ $this->get_logged_users("$myroom") } )
                 {
-			if( $this->is_teacher($logged_user->{user_dn}) )
+			if( $logged_user->{user_dn} eq $mydn )
+			{
+                        	push @lines, { line => [ $logged_user->{user_dn},
+                                                { pc_name   => $logged_user->{host_name} },
+                                                { user      => $logged_user->{user_name} },
+                                                { user_name => $logged_user->{user_cn} }
+                                        ]};
+			}
+			elsif( $this->is_teacher($logged_user->{user_dn}) )
 			{
                         	push @lines, { line => [ $logged_user->{user_dn},
                                                 { pc_name   => $logged_user->{host_name} },
