@@ -1884,7 +1884,7 @@ sub daemonize
     {
         open STDIN,"/dev/null";
         open STDOUT,">>$LOGDIR"."/lmd.log";
-        open STDERR,">>$LOGDIR"."/lmd.err";
+        open STDERR,">>$LOGDIR"."/lmd.log";
         chdir "/";
         fork && exit 0;
         print STDERR "\n\n----------------------------------------\n";
