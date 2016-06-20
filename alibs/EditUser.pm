@@ -679,10 +679,9 @@ sub setProfil
 	return [
 		{ subtitle         => "Set profil for these users:" },
 		{ label            => $list },
-		{ name => 'Win2K',       value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'WinXP',       value => 0, attributes => [ type => 'boolean' ] },
-		{ name => 'Win2K3',      value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'Win7',        value => 0, attributes => [ type => 'boolean', label => 'Win7 & Win8' ] },
+		{ name => 'Win10',       value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'Linux',       value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'template',    value => \@templates, attributes => [ type => 'popup' ] },
 		{ name => 'readOnly',    value => 0, attributes => [ type => 'boolean' ] },
@@ -704,10 +703,9 @@ sub deleteProfil
         foreach my $dn ( @users )
         {
                 my $uid = get_name_of_dn($dn);
-                system("/usr/sbin/oss_delete_profil.sh $uid Win2K")    if( $reply->{Win2K} );
                 system("/usr/sbin/oss_delete_profil.sh $uid WinXP")    if( $reply->{WinXP} );
-                system("/usr/sbin/oss_delete_profil.sh $uid Win2K3")   if( $reply->{Win2K3} );
                 system("/usr/sbin/oss_delete_profil.sh $uid Vista.V2") if( $reply->{Win7} );
+                system("/usr/sbin/oss_delete_profil.sh $uid Vista.V5") if( $reply->{Win10} );
                 system("/usr/sbin/oss_delete_profil.sh $uid Linux")    if( $reply->{Linux} );
         }
         $this->default;
