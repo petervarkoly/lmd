@@ -5,18 +5,36 @@ BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 package GlobalConfiguration;
 
 use strict;
-use oss_base;
 use Data::Dumper;
 use MIME::Base64;
 use Storable qw(thaw freeze);
+use oss_utils;
 use vars qw(@ISA);
-@ISA = qw(oss_base);
+if( -e "/usr/share/oss/lib/oss_schools.pm" )
+{
+    use oss_schools;
+    @ISA = qw(oss_schools);
+}
+else
+{
+    use oss_base;
+    @ISA = qw(oss_base);
+}
+
 
 sub new
 {
     my $this    = shift;
     my $connect = shift || undef;
-    my $self    = oss_base->new($connect);
+    my $self    = undef;
+    if( -e "/usr/share/oss/lib/oss_schools.pm" )
+    {
+       $self    = oss_schools->new($connect);
+    }
+    else
+    {
+       $self    = oss_base->new($connect);
+    }
     return bless $self, $this;
 }
 
@@ -44,6 +62,9 @@ sub getCapabilities
 		 { category     => 'System' },
 		 { order        => 20 },
 		 { variable     => [ "name",        [ type => "label", style => 'width:150px;'] ] },
+		 { variable     => [ "push",        [ type => "boolean" ] ] },
+		 { variable     => [ "types",       [ type => "list", size => '9', label=>"School Type" ] ] },
+		 { variable     => [ "schools",     [ type => "list", size => '20', multiple=>"true", label=>"School" ] ] },
 		 { variable     => [ "description", [ type => "label",  label=>"description", style => 'width:300px;' ] ] },
 		 { variable     => [ "rvalue",      [ type => "label",  label=>"value" ] ] },
 		 { variable     => [ "svalue",      [ type => "string", label=>"value" ] ] },
@@ -138,36 +159,37 @@ sub edit
 	push @{$arrays->{$sec}} , $sec;
         foreach my $key ( sort keys %{$sections->{$sec}} )
         {
+		my @line = ();
 		$sections->{$sec}->{$key}->{description} = main::__("$sections->{$sec}->{$key}->{description}");
 		$sections->{$sec}->{$key}->{description} =~ s/"/ /g;
 		if( $sections->{$sec}->{$key}->{ro} eq 'yes' && !defined $reply->{rw} )
                 {
-                	push @{$arrays->{$sec}}, { line => [ $key ,
-								{ name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} , 
-								{ rvalue => $sections->{$sec}->{$key}->{value} } ] };
+                	@line = ( $key , { name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} , 
+					 { rvalue => $sections->{$sec}->{$key}->{value} } );
 		}
                 elsif( defined $sections->{$sec}->{$key}->{avalue} )
                 {
                 	push @{$sections->{$sec}->{$key}->{avalue}} , '---DEFAULTS---', $sections->{$sec}->{$key}->{value};
-                	push @{$arrays->{$sec}}, { line => [ $key ,
-								{ name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} ,
-								{ pvalue => $sections->{$sec}->{$key}->{avalue} } ] };
+                	@line = ( $key , { name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} ,
+				         { pvalue => $sections->{$sec}->{$key}->{avalue} } );
                 }
                 elsif( $sections->{$sec}->{$key}->{type} eq 'yesno' )
                 {
                 	push @{$sections->{$sec}->{$key}->{avalue}} ,'yes','no', '---DEFAULTS---', $sections->{$sec}->{$key}->{value};
-                	push @{$arrays->{$sec}}, { line => [ $key ,
-								{ name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} ,
-								{ pvalue => $sections->{$sec}->{$key}->{avalue} } ] };
+                	@line = ( $key , { name =>'name' ,value=> $sections->{$sec}->{$key}->{name}, attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} ,
+					 { pvalue => $sections->{$sec}->{$key}->{avalue} } );
                 }
                 else
                 {
-                push @{$arrays->{$sec}}, { line => [ $key ,
-							{ name =>'name' ,value=> "$sections->{$sec}->{$key}->{name}", attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} , 
-							{ svalue => $sections->{$sec}->{$key}->{value} } ] };
+                	@line = ( $key , { name =>'name' ,value=> "$sections->{$sec}->{$key}->{name}", attributes => [ type=>'label', help    => "$sections->{$sec}->{$key}->{description}"]} , 
+					 { svalue => $sections->{$sec}->{$key}->{value} } );
                 }
-	}
-
+    		if( -e "/usr/share/oss/lib/oss_schools.pm" )
+		{
+			push @line, { push => 0 };	
+		}
+		push @{$arrays->{$sec}}, { line => \@line };
+        }
 	push @ret, { subtitle    => "$sec"};
 	push @ret, { table       =>  $arrays->{$sec} };
 	push @ret, { section     =>  $sec };
@@ -185,6 +207,78 @@ sub set
 	my $reply  = shift;
 	my $freeze = decode_base64(main::GetSessionDatas('GlobalConfiguration'));
         my %sections  = %{thaw($freeze )} if( defined $freeze );
+	my $to_push = 0;
+
+        if( -e "/usr/share/oss/lib/oss_schools.pm" )
+        {
+		if( defined $reply->{filter} )
+		{
+		   my $SCHOOLS = $this->searchSchools(1,$reply->{types},$reply->{filter});
+		   return [
+		   	{ schools => $SCHOOLS },
+			{ name        => "rightaction", value => "set", attributes => [ label => 'apply' ] },
+			{ rightaction => "cancel" }
+		   ]
+		}
+		if( defined $reply->{schools} )
+		{
+			my $freeze = decode_base64(main::GetSessionDatas('GlobalConfigurationReply'));
+			my $orig  = thaw($freeze ) if( defined $freeze );
+			foreach my $school ( split /\n/, $reply->{schools} )
+			{
+				my $secret = $this->get_vendor_object($school,'CEPHALIX','SECRET' );
+				my $host   = @{ $this->get_vendor_object($school,'CEPHALIX','LMD_ADRESS') }[0] ||  get_name_of_dn($school);
+				my ($ldap, $sdn) = $this->connectSchool($school);
+				my $suboss = oss_base->new( { LDAP_SERVER => $host, LDAP_BASE => $sdn, aDN=>'uid=cephalix,ou=people,'.$sdn, aPW=> $secret->[0]} );
+				foreach my $sec (keys %{$orig})
+				{
+					next if( ref($orig->{$sec}) ne 'HASH' );
+					foreach my $key (keys %{$orig->{$sec}})
+					{
+						next if( ! $orig->{$sec}->{$key}->{push} );
+						if( defined $orig->{$sec}->{$key}->{pvalue} )
+						{
+							my $global_config_value = $suboss->get_school_config("$key");
+							if( $orig->{$sec}->{$key}->{pvalue} ne "$global_config_value"){
+								$suboss->set_school_config($key,$orig->{$sec}->{$key}->{pvalue});
+								#TODO$suboss->triggering("$key");
+							}
+						}
+						elsif( defined $orig->{$sec}->{$key}->{svalue} )
+						{
+							my $global_config_value = $suboss->get_school_config("$key");
+							if( $orig->{$sec}->{$key}->{svalue} ne "$global_config_value"){
+								$suboss->set_school_config($key,$orig->{$sec}->{$key}->{svalue});
+								#TODO$suboss->triggering("$key");
+							}
+						}
+					}
+				}
+				$suboss->destroy();
+				$ldap->unbind();
+				system("ssh $host /usr/sbin/oss_ldap_to_sysconfig.pl");
+			}
+			return $this->default();
+		}
+		foreach my $sec (keys %{$reply})
+		{
+			next if( ref($reply->{$sec}) ne 'HASH' );
+			foreach my $key (keys %{$reply->{$sec}})
+			{
+				if( $reply->{$sec}->{$key}->{push} )
+				{
+					$to_push =1;
+					last;
+				}
+			}
+			last if( $to_push );
+		}
+		if( $to_push )
+		{
+			my $freeze = encode_base64(freeze($reply),"");
+			main::AddSessionDatas($freeze,'GlobalConfigurationReply');
+		}
+        }
 
 	foreach my $sec (keys %{$reply})
 	{
@@ -210,6 +304,16 @@ sub set
 		}
 	}
 	system("/usr/sbin/oss_ldap_to_sysconfig.pl");
+        if( $to_push )
+	{
+		return [
+		        { filter      => $this->{reply} || '*' },
+		        { types       => $this->schoolTypes() },
+		        { name        => "rightaction", value => "set", attributes => [ label => 'search' ] },
+		        { rightaction => 'cancel' }
+        	];
+
+	}
 	$this->default();
 
 }
@@ -223,7 +327,6 @@ sub triggering
 	return if( scalar(@$trigger_scripts) == 0 );
 
 	foreach my $trigger_script ( @$trigger_scripts ){
-#		print "$trigger_script --$school_conf_value\n";
 		system("$trigger_script --$act_conf_value");
 	}
 
