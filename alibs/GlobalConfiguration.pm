@@ -5,7 +5,6 @@ BEGIN{ push @INC,"/usr/share/oss/lib/"; }
 package GlobalConfiguration;
 
 use strict;
-use Data::Dumper;
 use MIME::Base64;
 use Storable qw(thaw freeze);
 use oss_utils;
@@ -77,6 +76,7 @@ sub getCapabilities
 sub default
 {
         my $this   = shift;
+	my $reply = shift;
 	my @lines = ('globalconf');
 
         my $mesg      = $this->{LDAP}->search( base   => $this->{SYSCONFIG_BASE},
@@ -86,6 +86,10 @@ sub default
 
         my $sections = {};
         my @ret      = ();
+	if( defined $reply->{ERROR} )
+	{
+		push @ret, { ERROR => $reply->{ERROR} };
+	}
 	foreach my $entry ( $mesg->entries )
         {
             my @path    = split /\//, $entry->get_value('configurationPath');
@@ -134,6 +138,7 @@ sub edit
         my $sections = {};
         my @ret      = ();
         my $arrays   = {};
+
         foreach my $entry ( $mesg->entries )
         {
             my @path    = split /\//, $entry->get_value('configurationPath');
@@ -208,6 +213,7 @@ sub set
 	my $freeze = decode_base64(main::GetSessionDatas('GlobalConfiguration'));
         my %sections  = %{thaw($freeze )} if( defined $freeze );
 	my $to_push = 0;
+	my $ERROR   = "";
 
         if( -e "/usr/share/oss/lib/oss_schools.pm" )
         {
@@ -230,6 +236,11 @@ sub set
 				my $host   = @{ $this->get_vendor_object($school,'CEPHALIX','LMD_ADRESS') }[0] ||  get_name_of_dn($school);
 				my ($ldap, $sdn) = $this->connectSchool($school);
 				my $suboss = oss_base->new( { LDAP_SERVER => $host, LDAP_BASE => $sdn, aDN=>'uid=cephalix,ou=people,'.$sdn, aPW=> $secret->[0]} );
+				if( ! defined $suboss )
+				{
+					$ERROR .= $this->{ERROR}->{text}."<br>";
+					next;
+				}
 				foreach my $sec (keys %{$orig})
 				{
 					next if( ref($orig->{$sec}) ne 'HASH' );
@@ -241,7 +252,7 @@ sub set
 							my $global_config_value = $suboss->get_school_config("$key");
 							if( $orig->{$sec}->{$key}->{pvalue} ne "$global_config_value"){
 								$suboss->set_school_config($key,$orig->{$sec}->{$key}->{pvalue});
-								#TODO$suboss->triggering("$key");
+								#$suboss->triggering("$key");
 							}
 						}
 						elsif( defined $orig->{$sec}->{$key}->{svalue} )
@@ -249,7 +260,7 @@ sub set
 							my $global_config_value = $suboss->get_school_config("$key");
 							if( $orig->{$sec}->{$key}->{svalue} ne "$global_config_value"){
 								$suboss->set_school_config($key,$orig->{$sec}->{$key}->{svalue});
-								#TODO$suboss->triggering("$key");
+								#$suboss->triggering("$key");
 							}
 						}
 					}
@@ -257,6 +268,10 @@ sub set
 				$suboss->destroy();
 				$ldap->unbind();
 				system("ssh $host /usr/sbin/oss_ldap_to_sysconfig.pl");
+			}
+			if( "$ERROR" )
+			{
+				return $this->default({ ERROR => $ERROR } );
 			}
 			return $this->default();
 		}
@@ -327,6 +342,7 @@ sub triggering
 	return if( scalar(@$trigger_scripts) == 0 );
 
 	foreach my $trigger_script ( @$trigger_scripts ){
+#		print "$trigger_script --$school_conf_value\n";
 		system("$trigger_script --$act_conf_value");
 	}
 
