@@ -1025,7 +1025,7 @@ sub applyChangesForWs
 	push @ret, { subtitle => $hwDesc." / ".main::__("applyChangesForWs") };
 	push @ret, { ERROR    => $reply->{error} }   if( exists($reply->{error}) );
 	push @ret, { NOTICE   => $reply->{warning} } if( exists($reply->{warning}) );
-	push @ret, { NOTICE   => main::__('applyChangesForWsNotice') };
+#	push @ret, { NOTICE   => main::__('applyChangesForWsNotice') };
 	push @ret, { NOTICE   => $actPkgMsg } if( defined $actualPkgs );
 	push @ret, { label    => 'installNow' };
 	push @ret, { name     => 'installNow', value => 0, attributes => [ type => 'boolean' ] };
