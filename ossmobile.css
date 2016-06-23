@@ -80,8 +80,9 @@ tr.ContentLine {
 }
 
 td.AdminHead {
-	background-image: url(/images/top_bgimage.jpg);
 	height: 50px;
+	font-size: 2.4em;
+	text-align: center;	
 }
 td.ApplicationTitle {
 	font-size: 2.4em;
