@@ -723,10 +723,9 @@ sub setProfilRealy
         foreach my $dn ( @users )
 	{
 		my $uid = get_name_of_dn($dn);
-		system("/usr/sbin/oss_copy_profil.sh $uid Win2K    $templ $ro $do") if( $reply->{Win2K} );
 		system("/usr/sbin/oss_copy_profil.sh $uid WinXP    $templ $ro $do") if( $reply->{WinXP} );
-		system("/usr/sbin/oss_copy_profil.sh $uid Win2K3   $templ $ro $do") if( $reply->{Win2K3} );
 		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V2 $templ $ro $do") if( $reply->{Win7} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V5 $templ $ro $do") if( $reply->{Win10} );
 		system("/usr/sbin/oss_copy_profil.sh $uid Linux    $templ $ro $do") if( $reply->{Linux} );
 	}
 	$this->default;
