@@ -26,6 +26,8 @@ sub new
 sub interface
 {
 	return [
+                "addToGroups",
+                "addToGroupsRealy",
                 "changePassword",
                 "changeQuota",
                 "changeUserState",
@@ -186,6 +188,7 @@ sub search
 		{ users	        => \@users },
 		{ rightaction   => "changePassword" },
 		{ rightaction   => "editUser" },
+		{ rightaction   => "addToGroups" },
 		{ rightaction   => "changeQuota" },
 		{ rightaction   => "changeUserState" },
 		{ rightaction   => "setProfil" },
@@ -210,6 +213,58 @@ sub noUser
 	     CODE    => 'NO_USER_SELECTED',
 	     MESSAGE => 'select_user'
 	};
+}
+
+sub addToGroups
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my @ret    = ( { subtitle    => 'Put Users in Groups:' } );
+	my @users  = split /\n/, $reply->{users};
+	my $freeze = encode_base64(freeze(\@users),"");
+	main::AddSessionDatas($freeze,'addToGroups');
+	my $list   = "";
+	foreach my $dn ( @users )
+	{
+		$list .= $this->get_attribute($dn,'cn').',';
+	}
+	push @ret, { notranslate_label       => $list };
+	my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search();
+	if( $this->{LDAP_BASE} ne main::GetSessionValue('sdn') )
+	{
+	       push @ret, { label => main::__( 'Selected School: '). $this->get_attribute(main::GetSessionValue('sdn'),'o') };
+	}
+	push @ret, { role        => $roles};
+	push @ret, { class       => $classes };
+	push @ret, { workgroup   => $workgroups };
+	push @ret, { rightaction => "cancel" };
+	push @ret, { name => 'rightaction', value => "addToGroupsRealy", attributes => [ label => 'apply' ] };
+	return \@ret;
+}
+
+sub addToGroupsRealy
+{
+	my $this   = shift;
+	my $reply  = shift;
+	my $freeze = decode_base64(main::GetSessionDatas('addToGroups'));
+	my @users  = @{thaw($freeze )} if( defined $freeze );
+        foreach my $dn ( @users )
+	{
+		foreach my $gdn( split /\n/, $reply->{role} )
+		{
+			$this->add_user_to_group($dn,$gdn);
+		}
+		foreach my $gdn( split /\n/, $reply->{class} )
+		{
+			$this->add_user_to_group($dn,$gdn);
+		}
+		foreach my $gdn( split /\n/, $reply->{workgroup} )
+		{
+			$this->add_user_to_group($dn,$gdn);
+		}
+	}
+	system("nscd -i group");
+	$this->default();
 }
 
 sub searchUsersFiles
