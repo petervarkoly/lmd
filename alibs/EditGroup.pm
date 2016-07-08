@@ -235,11 +235,15 @@ sub edit
         }
 	my $webdav_access_value = $this->get_vendor_object($dn,'EXTIS','WebDavAccess') ;
 	my $cloud_access_value  = $this->get_vendor_object($dn,'EXTIS','CloudAccess') ;
+        my $cn = get_name_of_dn($dn);
+        my $web = 0; $web = 1 if( -e '/etc/apache2/vhosts.d/'.$cn.'.group' );
+
 	push @ret, { webdav_access => "$webdav_access_value->[0]" };
+	push @ret, { web           => $web };
 	push @ret, { cloud_access  => "$cloud_access_value->[0]" } if( -e "/etc/sysconfig/OSS_CLOUD" );
-        push @ret, { dn           => $dn };
-        push @ret, { action       => "cancel" };
-        push @ret, { action       => "newMember" };
+        push @ret, { dn            => $dn };
+        push @ret, { action        => "cancel" };
+        push @ret, { action        => "newMember" };
         push @ret, { name => 'action', value => "setChanges", attributes => [ label => 'apply' ]  };
         return \@ret;
 
