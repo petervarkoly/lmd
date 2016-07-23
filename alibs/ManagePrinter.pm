@@ -897,11 +897,11 @@ sub install_driver
 			my $cmd = "mkdir /var/lib/samba/drivers/W32X86/3; chmod 777 /var/lib/samba/drivers/W32X86/3/;";
 			$cmd .= 'cp /usr/share/cups/drivers/* /var/lib/samba/drivers/W32X86/; cp /usr/share/cups/drivers/* /var/lib/samba/drivers/W32X86/3/;';
 			$cmd .= 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/3/;';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/W32X86/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/W32X86/*;';
 			system("$cmd");
 		}else{
 			my $cmd = 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/3/;';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/W32X86/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/W32X86/*;';
 			system("$cmd");
 		}
 
@@ -909,11 +909,11 @@ sub install_driver
 			my $cmd = "mkdir /var/lib/samba/drivers/x64/3; chmod 777 /var/lib/samba/drivers/x64/3/;";
 			$cmd .= 'cp /usr/share/cups/drivers/x64/* /var/lib/samba/drivers/x64/; cp /usr/share/cups/drivers/x64/* /var/lib/samba/drivers/x64/3/;';
 			$cmd .= 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/3/; ';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/x64/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/x64/*;';
 			system("$cmd");
 		}else{
 			my $cmd = 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/3/; ';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/x64/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/x64/*;';
 			system("$cmd");
 		}
 
