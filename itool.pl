@@ -142,10 +142,9 @@ if( $action eq 'getPRINTER' )
         {
                 print '  <defaultPrinter>'.$dprint->[0]."</defaultPrinter>\n";
         }
-        foreach (split /\n/,$prints->[0] )
-        {
-                print "  <printer>$_</printer>\n";
-        }
+        print "   <printer>";
+        print join(";",split(/\n/,$prints->[0] ));
+        print " </printer>\n";
         print '</printers>';
 }
 
