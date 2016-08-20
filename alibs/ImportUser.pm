@@ -55,6 +55,8 @@ sub getCapabilities
                 { variable     => [ "resetPW",         [ type => "boolean" ] ] },
                 { variable     => [ "full",            [ type => "boolean" , label=>"This list contains all user" ] ] },
                 { variable     => [ "test",            [ type => "boolean" , label=>"Try only what would happen"] ] },
+                { variable     => [ "allClasses",      [ type => "boolean" , label=>"This list contains all classes", help=>"Classes which are not in the list will be deleted. This parameter has only affect for students." ] ] },
+                { variable     => [ "cleanClassDirs",  [ type => "boolean" , label=>"Clean up the directories of classes", help => "The directories of all classes will deleted and new created. This parameter has only affect for students." ] ] ] },
                 { variable     => [ "alias",           [ type => "boolean" ] ] },
                 { variable     => [ "mailenabled",     [ type => "popup" ] ] },
 		{ variable     => [ "role",            [ type => "popup" ] ] },
@@ -120,20 +122,22 @@ sub default
 	push @mailenabled, '---DEFAULTS---', "$default_mailenabled" ;
 
         return [
-                { file         => '' },
-		{ format       => \@format },
-                { role         => \@role},
-		{ lang         => getLanguages(main::GetSessionValue('lang')) },
-		{ test	       => 1 },
-		{ full	       => 0 },
-		{ alias	       => 0 },
-		{ mustchange   => 0 },
-		{ resetPW      => 0 },
-		{ userpassword => '' },
-		{ mailenabled  => \@mailenabled },
-                { action       => "cancel" },
-                { action       => "showOldImports" },
-                { action       => "import" }
+                { file           => '' },
+		{ format         => \@format },
+                { role           => \@role},
+		{ lang           => getLanguages(main::GetSessionValue('lang')) },
+		{ test	         => 1 },
+		{ full	         => 0 },
+                { allClasses     => 0 },
+                { cleanClassDirs => 0 },
+		{ alias	         => 0 },
+		{ mustchange     => 0 },
+		{ resetPW        => 0 },
+		{ userpassword   => '' },
+		{ mailenabled    => \@mailenabled },
+                { action         => "cancel" },
+                { action         => "showOldImports" },
+                { action         => "import" }
         ];
 
 }
@@ -173,6 +177,14 @@ sub import
 	{
 		$attributes .= ' --full';
 	}
+        if( $reply->{role} eq 'students' && $reply->{cleanClassDir} )
+        {
+                $attributes .= ' --cleanClassDir';
+        }
+        if( $reply->{role} eq 'students' && $reply->{allClasses} )
+        {
+                $attributes .= ' --allClasses';
+        }
 	if( $reply->{mustchange} )
 	{
 		$attributes .= ' --mustchange';
