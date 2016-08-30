@@ -287,9 +287,9 @@ sub rooms
         my $current_page;
         my $rooms_per_page = 5;
         my $count       = 0;
-	my @rooms       = $this->get_rooms('all');
+	my @rooms       = $this->get_rooms('known');
         my $total_rooms = scalar(@rooms);
-        my $page_number = $total_rooms / $rooms_per_page;
+        my $page_number = int( ($total_rooms + $rooms_per_page -1 ) / $rooms_per_page);
         if( exists($reply->{current_page}) )
 	{
                 $current_page = $reply->{current_page};
@@ -303,8 +303,6 @@ sub rooms
         foreach my $room (@rooms) {
 		my $dn   = $room->[0];
 		my $desc = $room->[1];
-                $count++;
-		next if ( $desc eq 'ANON_DHCP' );
                 if( ($count < $pagelinemax) and ($count >= $pagelinemin) ){
                         my @printername;
                         my @ap = ();
@@ -338,6 +336,7 @@ sub rooms
 					{ action   => 'workstations' } 
                         ]};
                 }
+                $count++;
         }
 
 
