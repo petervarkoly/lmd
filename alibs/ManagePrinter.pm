@@ -810,39 +810,40 @@ sub delete_printer
 	my $admin_pass = main::GetSessionValue('userpassword');
 	my $admin_user = main::GetSessionValue('username');
 
-	# Default und Sonstige Drucker loschen
-	foreach my $room ( $this->get_rooms() ){
-		my $room_dn  = $room->[0];
-		my $dprinter =  $this->get_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
-		if( $dprinter->[0] and $dprinter->[0] eq $printer_name )
-		{
-			$this->delete_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
-		}
-		my $aprinters = $this->get_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
-		my @aprint = split ('\n',$aprinters->[0]);
-		if( scalar(@aprint) ge 1 )
-		{
-			my $prin = '';
-			my $flg = 0;
-			foreach my $aprinter ( @aprint )
+        # Default Drucker loschen
+        foreach my $dn ( @{$this->search_vendor_object('EXTIS','DEFAULT_PRINTER',$printer_name)} )
+        {
+                $this->{LDAP}->delete($dn);
+        }
+        # Weiter Drucker loschen
+        foreach my $dn ( @{$this->search_vendor_object('EXTIS','AVAILABLE_PRINTER',"*$printer_name*")} )
+        {
+                my @aprint = split( "\n", $this->get_attribute($dn,'configurationValue') );
+                if( scalar(@aprint) )
+                {
+                        my @newaprint = ();
+                        foreach my $aprinter ( @aprint )
+                        {
+                                next if( "$aprinter" eq "$printer_name" or $aprinter eq "")
+                                push @newaprint, $aprinter;
+                        }
+			#Leider kann es sein, dass fehlerhaft leere Zeilen als Drucker eingetragen wurden.
+			if( scalar(@newaprint) )
 			{
-				if( "$aprinter" eq "$printer_name" )
-				{
-					$flg = 1;
-				}else{
-					$prin .= $aprinter."\n"; 	
-				}
+				$this->{LDAP}->modify($dn, replace => { configurationValue => join("\n",@newaprint));
 			}
-			if( $flg )
+			else
 			{
-				$this->delete_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
-				$this->create_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER',$prin);
+				$this->{LDAP}->delete($dn);
 			}
-		}
-		
-	}	
+                }
+                else
+                {
+                        $this->{LDAP}->delete($dn);
+                }
+        }
 
-	# drucker treiber deactivieren
+	# drucker treiber deaktivieren
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
 	if( $install_printer_driver eq 'active' )
 	{
