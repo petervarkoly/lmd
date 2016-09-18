@@ -824,13 +824,13 @@ sub delete_printer
                         my @newaprint = ();
                         foreach my $aprinter ( @aprint )
                         {
-                                next if( "$aprinter" eq "$printer_name" or $aprinter eq "")
+				#Leider kann es sein, dass fehlerhaft leere Zeilen als Drucker eingetragen wurden.
+                                next if( "$aprinter" eq "$printer_name" or $aprinter eq "");
                                 push @newaprint, $aprinter;
                         }
-			#Leider kann es sein, dass fehlerhaft leere Zeilen als Drucker eingetragen wurden.
 			if( scalar(@newaprint) )
 			{
-				$this->{LDAP}->modify($dn, replace => { configurationValue => join("\n",@newaprint));
+				$this->{LDAP}->modify($dn, replace => { configurationValue => join("\n",@newaprint) });
 			}
 			else
 			{
