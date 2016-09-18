@@ -287,9 +287,9 @@ sub rooms
         my $current_page;
         my $rooms_per_page = 5;
         my $count       = 0;
-	my @rooms       = $this->get_rooms('all');
+	my @rooms       = $this->get_rooms('known');
         my $total_rooms = scalar(@rooms);
-        my $page_number = $total_rooms / $rooms_per_page;
+        my $page_number = int( ($total_rooms + $rooms_per_page -1 ) / $rooms_per_page);
         if( exists($reply->{current_page}) )
 	{
                 $current_page = $reply->{current_page};
@@ -303,8 +303,6 @@ sub rooms
         foreach my $room (@rooms) {
 		my $dn   = $room->[0];
 		my $desc = $room->[1];
-                $count++;
-		next if ( $desc eq 'ANON_DHCP' );
                 if( ($count < $pagelinemax) and ($count >= $pagelinemin) ){
                         my @printername;
                         my @ap = ();
@@ -338,6 +336,7 @@ sub rooms
 					{ action   => 'workstations' } 
                         ]};
                 }
+                $count++;
         }
 
 
@@ -811,39 +810,40 @@ sub delete_printer
 	my $admin_pass = main::GetSessionValue('userpassword');
 	my $admin_user = main::GetSessionValue('username');
 
-	# Default und Sonstige Drucker loschen
-	foreach my $room ( $this->get_rooms() ){
-		my $room_dn  = $room->[0];
-		my $dprinter =  $this->get_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
-		if( $dprinter->[0] and $dprinter->[0] eq $printer_name )
-		{
-			$this->delete_vendor_object($room_dn,'EXTIS','DEFAULT_PRINTER');
-		}
-		my $aprinters = $this->get_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
-		my @aprint = split ('\n',$aprinters->[0]);
-		if( scalar(@aprint) ge 1 )
-		{
-			my $prin = '';
-			my $flg = 0;
-			foreach my $aprinter ( @aprint )
+        # Default Drucker loschen
+        foreach my $dn ( @{$this->search_vendor_object('EXTIS','DEFAULT_PRINTER',$printer_name)} )
+        {
+                $this->{LDAP}->delete($dn);
+        }
+        # Weiter Drucker loschen
+        foreach my $dn ( @{$this->search_vendor_object('EXTIS','AVAILABLE_PRINTER',"*$printer_name*")} )
+        {
+                my @aprint = split( "\n", $this->get_attribute($dn,'configurationValue') );
+                if( scalar(@aprint) )
+                {
+                        my @newaprint = ();
+                        foreach my $aprinter ( @aprint )
+                        {
+                                next if( "$aprinter" eq "$printer_name" or $aprinter eq "")
+                                push @newaprint, $aprinter;
+                        }
+			#Leider kann es sein, dass fehlerhaft leere Zeilen als Drucker eingetragen wurden.
+			if( scalar(@newaprint) )
 			{
-				if( "$aprinter" eq "$printer_name" )
-				{
-					$flg = 1;
-				}else{
-					$prin .= $aprinter."\n"; 	
-				}
+				$this->{LDAP}->modify($dn, replace => { configurationValue => join("\n",@newaprint));
 			}
-			if( $flg )
+			else
 			{
-				$this->delete_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER');
-				$this->create_vendor_object($room_dn,'EXTIS','AVAILABLE_PRINTER',$prin);
+				$this->{LDAP}->delete($dn);
 			}
-		}
-		
-	}	
+                }
+                else
+                {
+                        $this->{LDAP}->delete($dn);
+                }
+        }
 
-	# drucker treiber deactivieren
+	# drucker treiber deaktivieren
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
 	if( $install_printer_driver eq 'active' )
 	{
@@ -897,11 +897,11 @@ sub install_driver
 			my $cmd = "mkdir /var/lib/samba/drivers/W32X86/3; chmod 777 /var/lib/samba/drivers/W32X86/3/;";
 			$cmd .= 'cp /usr/share/cups/drivers/* /var/lib/samba/drivers/W32X86/; cp /usr/share/cups/drivers/* /var/lib/samba/drivers/W32X86/3/;';
 			$cmd .= 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/3/;';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/W32X86/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/W32X86/*;';
 			system("$cmd");
 		}else{
 			my $cmd = 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/W32X86/3/;';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/W32X86/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/W32X86/*;';
 			system("$cmd");
 		}
 
@@ -909,11 +909,11 @@ sub install_driver
 			my $cmd = "mkdir /var/lib/samba/drivers/x64/3; chmod 777 /var/lib/samba/drivers/x64/3/;";
 			$cmd .= 'cp /usr/share/cups/drivers/x64/* /var/lib/samba/drivers/x64/; cp /usr/share/cups/drivers/x64/* /var/lib/samba/drivers/x64/3/;';
 			$cmd .= 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/3/; ';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/x64/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/x64/*;';
 			system("$cmd");
 		}else{
 			my $cmd = 'cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/; cp /etc/cups/ppd/'.$printer_name.'.ppd /var/lib/samba/drivers/x64/3/; ';
-			$cmd .= 'chown -R admin:ntadmin /var/lib/samba/drivers/x64/*;';
+			$cmd .= 'chown -R admin:SYSADMINS /var/lib/samba/drivers/x64/*;';
 			system("$cmd");
 		}
 

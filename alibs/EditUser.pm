@@ -358,7 +358,7 @@ sub changePassword
 	push @ret, { label        => $list };
 	push @ret, { userpassword => "" };
 	if( !$may_not_change_password ){
-		push @ret, { mustchange   => 1 };
+		push @ret, { mustchange   => 1 } if main::isAllowed('EditUser.mustchange');
 	}
 	push @ret, { action       => "cancel" };
 	push @ret, { name => 'action', value => "setPassword", attributes => [ label => 'apply' ] };
