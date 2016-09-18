@@ -56,7 +56,7 @@ sub getCapabilities
                 { variable     => [ "full",            [ type => "boolean" , label=>"This list contains all user" ] ] },
                 { variable     => [ "test",            [ type => "boolean" , label=>"Try only what would happen"] ] },
                 { variable     => [ "allClasses",      [ type => "boolean" , label=>"This list contains all classes", help=>"Classes which are not in the list will be deleted. This parameter has only affect for students." ] ] },
-                { variable     => [ "cleanClassDirs",  [ type => "boolean" , label=>"Clean up the directories of classes", help => "The directories of all classes will deleted and new created. This parameter has only affect for students." ] ] ] },
+                { variable     => [ "cleanClassDirs",  [ type => "boolean" , label=>"Clean up the directories of classes", help => "The directories of all classes will deleted and new created. This parameter has only affect for students." ] ] },
                 { variable     => [ "alias",           [ type => "boolean" ] ] },
                 { variable     => [ "mailenabled",     [ type => "popup" ] ] },
 		{ variable     => [ "role",            [ type => "popup" ] ] },
@@ -120,7 +120,7 @@ sub default
 	my @mailenabled = ([ 'ok', main::__('ok') ],  [ 'no', main::__('no') ], [ 'local_only', main::__('local_only') ] );
 	my $default_mailenabled = $this->get_school_config('SCHOOL_MAILBOX_ACCESS') || 'ok';
 	push @mailenabled, '---DEFAULTS---', "$default_mailenabled" ;
-	my @ret = ()
+	my @ret = ();
 
         push @ret, { file           => '' };
 	push @ret, { format         => \@format };
