@@ -57,17 +57,17 @@ installalibs:
 	install -m 755 alibs/*sh   $(LMDDIR)/alibs
 
 tar:
-	if [ -e lmd ]; then rm -rf lmd; fi
-	mkdir lmd
-	cp -rp $(SUBS) lmd
-	find lmd \( -not -regex "^.*\.git\/.*" -a -not -regex "^.*\.svn\/.*" \) -xtype f > files; \
+	if [ -e $(PACKAGE) ]; then rm -rf $(PACKAGE); fi
+	mkdir $(PACKAGE)
+	cp -rp $(SUBS) $(PACKAGE)
+	find $(PACKAGE) \( -not -regex "^.*\.git\/.*" -a -not -regex "^.*\.svn\/.*" \) -xtype f > files; \
 	    tar jcpf $(PACKAGE).tar.bz2 -T files;
 	rm files
 
 dist:   tar
 	sed "s/@VERSION@/$(VERSION)/" $(PACKAGE).spec.in > $(PACKAGE).spec
 	sed -i "s/@RELEASE@/$(NRELEASE)/"  $(PACKAGE).spec
-	rm -rf lmd
+	rm -rf $(PACKAGE)
 	if [ -d /data1/OSC/home\:openschoolserver/$(PACKAGE) ] ; then \
 		cd /data1/OSC/home\:openschoolserver/$(PACKAGE); osc up; cd $(HERE);\
 	        cp $(PACKAGE).tar.bz2 $(PACKAGE).spec /data1/OSC/home\:openschoolserver/$(PACKAGE); \
