@@ -1171,6 +1171,7 @@ sub addPC
 		if( $reply->{other_name} =~ /[^a-zA-Z0-9-]+/ ||
 		    $reply->{other_name} !~ /^[a-zA-Z]/      ||
 		    $reply->{other_name} =~ /-$/             ||
+		    $reply->{other_name} =~ /-wlan$/         ||
 		    length($reply->{other_name})<2           ||
 		    length($reply->{other_name}) > 15  )
 		{
