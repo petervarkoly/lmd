@@ -1177,7 +1177,7 @@ sub addPC
 		{
 		    return { TYPE    => 'ERROR' ,
 			     CODE    => 'INVALID_HOST_NAME',
-			     MESSAGE => "The alternate host name is invalid."
+			     MESSAGE => "The alternate host name is invalid.<br>This may contains only ASCII-7 letters numbers and '-'.<br>The alternate name must not and with '-wlan' or '-'.<br>The alternate name must start with a letter."
 	                   };
 		}
 		$result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DNS_BASE},
