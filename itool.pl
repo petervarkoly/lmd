@@ -274,12 +274,13 @@ if( $action eq 'getSwRepoInfo' )
         }
 
 	# sort package
-	if( !exists($tmpHash{deinstallation_scheduled}) or !scalar($tmpHash{deinstallation_scheduled}) ){
-		$tmpHash{deinstallation_scheduled} = reverse($tmpHash{deinstallation_scheduled});
-	}
-	if( !exists($tmpHash{installation_scheduled}) or !scalar($tmpHash{installation_scheduled}) ){
-		$tmpHash{installation_scheduled} = $oss->sortPkg($tmpHash{installation_scheduled});
-	}
+        if( exists($tmpHash{deinstallation_scheduled}) or scalar($tmpHash{deinstallation_scheduled}) ){
+                @{$tmpHash{deinstallation_scheduled}} = reverse(@{$oss->sortPkg($tmpHash{deinstallation_scheduled})});
+        }
+
+        if( exists($tmpHash{installation_scheduled}) or scalar($tmpHash{installation_scheduled}) ){
+                $tmpHash{installation_scheduled} = $oss->sortPkg($tmpHash{installation_scheduled});
+        }
 
 	# get installed manual software
 	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', $wsUserDn );

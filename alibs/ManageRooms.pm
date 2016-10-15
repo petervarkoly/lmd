@@ -1171,12 +1171,13 @@ sub addPC
 		if( $reply->{other_name} =~ /[^a-zA-Z0-9-]+/ ||
 		    $reply->{other_name} !~ /^[a-zA-Z]/      ||
 		    $reply->{other_name} =~ /-$/             ||
+		    $reply->{other_name} =~ /-wlan$/         ||
 		    length($reply->{other_name})<2           ||
 		    length($reply->{other_name}) > 15  )
 		{
 		    return { TYPE    => 'ERROR' ,
 			     CODE    => 'INVALID_HOST_NAME',
-			     MESSAGE => "The alternate host name is invalid."
+			     MESSAGE => "The alternate host name is invalid.<br>This may contains only ASCII-7 letters numbers and '-'.<br>The alternate name must not and with '-wlan' or '-'.<br>The alternate name must start with a letter."
 	                   };
 		}
 		$result = $this->{LDAP}->search( base   => $this->{SYSCONFIG}->{DNS_BASE},
