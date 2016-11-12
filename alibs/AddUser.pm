@@ -70,7 +70,7 @@ sub default
 	my $uid    	= $reply->{uid} || ''; 
 	my $sn          = $reply->{sn} || ''; 
 	my $givenname   = $reply->{givenname} || ''; 
-	my $userpassword= $reply->{userpassword} || 'system'; 
+	my $userpassword= $reply->{userpassword} || create_secure_pw() ; 
 	my $quota       = $reply->{quota} || ''; 
 	my $fquota	= $reply->{fquota} || ''; 
 	my $mustchange  = $reply->{mustchange} || 0;
@@ -154,7 +154,7 @@ sub insert
 	my $user = $this->get_user($dn,['uid','cn','description']);
 	return {
 	     TYPE                 => 'NOTICE',
-	     MESSAGE1_NOTRANSLATE => $user->{cn}->[0].',  '.$user->{uid}->[0].', ('.$user->{description}->[0].')',
+	     MESSAGE1_NOTRANSLATE => $user->{cn}->[0].',  '.$user->{uid}->[0].', ('.$user->{description}->[0].')  '.$reply->{userpassword},
 	     MESSAGE              => 'User was created succesfully'
 	};
 }
