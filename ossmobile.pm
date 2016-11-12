@@ -34,7 +34,7 @@ binmode STDOUT, ':encoding(UTF-8)';
 $ENV{LANG}="de_DE.UTF-8";
 $ENV{LC_ALL}="de_DE.UTF-8";
 
-my $DEBUG	= 1;
+my $DEBUG	= 0;
 my $DEBUGFILE	= "/tmp/log.ossmobile";
 my $PORT        = "1967";
 my $ADDRESS     = "localhost";
@@ -101,6 +101,7 @@ sub display
     my $params = $this->{"CGI"}->Vars;
     
     open DEBUGH,">>$DEBUGFILE" if $DEBUG;
+    system("chmod 600 $DEBUGFILE" ) if( -e $DEBUGFILE );
     Debug("display called\n");
     print DEBUGH Dumper($params) if $DEBUG;
 
@@ -134,6 +135,8 @@ sub login
     my $this   = shift;
     my $err    = shift || "";
     Debug("login called\n");
+    my $params     = $this->{"CGI"}->Vars;
+    my $clientaddr = $params->{'clientaddr'} || $this->{CGI}->remote_addr;
 
     my    $CGI = new CGI;
     print $CGI->header(-type=>'text/html',-charset=>'UTF-8');
@@ -188,6 +191,7 @@ sub login
     print     $CGI->end_table();
     print     "\n";
     print     '<input type="hidden" name="ACTION" value="LOGIN" >';
+    print     '<input type="hidden" name="clientaddr" value="'.$clientaddr.'" >';
 # Ich erschieße mich aber das tut nicht
 #    print     $CGI->hidden(-name=>'ACTION',  -value=>'LOGIN');
     print     "\n";
@@ -215,12 +219,13 @@ sub checkLogin
 
     my $this   = shift;
     my $params = $this->{"CGI"}->Vars;
+    my $IP     = $params->{'clientaddr'} || $this->{CGI}->remote_addr;
     Debug("checkLogin called\n");
 
     my $REQUEST = '<request name="login">
 <username>'.$params->{'username'}.'</username>
 <userpassword>'.$params->{'userpassword'}.'</userpassword>
-<ip>'.$this->{CGI}->remote_addr.'</ip>
+<ip>'.$IP.'</ip>
 <logoffOther>1</logoffOther>
 </request>' ;
     sendRequest($REQUEST);
