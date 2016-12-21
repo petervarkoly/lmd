@@ -88,6 +88,30 @@ if( $action eq 'getPCN' )
 
 =item
 Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getDNSNAME&IP=172.16.2.1" 
+=cut
+if( $action eq 'getDNSNAME' )
+{
+        my $ip  = $cgi->param("IP");
+        my $pc_name = "-";
+        if( !defined $ip )
+        {
+           $ip  = $cgi->remote_addr();
+        }
+        my $wsDN = $oss->get_host($ip);
+        my $tmp = get_name_of_dn($wsDN);
+        $tmp =~ s/-wlan$//;
+        if($tmp){
+                $pc_name = $tmp;
+        }
+        print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "  <DNSNAME>".$pc_name."</DNSNAME>\n";
+}
+
+=item
+Ex: 
    wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getDOMAIN" 
 =cut
 if( $action eq 'getDOMAIN' )
@@ -106,21 +130,21 @@ if( $action eq 'getDOMAIN' )
 	print "DOMAIN $sambadomain\n";
 	print $cgi->end_html();
 }
-
 =item
 Ex: 
    wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getOSSNETBIOSNAME" 
 =cut
 if( $action eq 'getOSSNETBIOSNAME' )
 {
-	my $sambadomain = "-";
-	my $ossnetbiosname = $oss->get_school_config("SCHOOL_NETBIOSNAME");
+        my $sambadomain = "-";
+        my $ossnetbiosname = $oss->get_school_config("SCHOOL_NETBIOSNAME");
+        print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "  <OSSNETBIOSNAME>".$ossnetbiosname."</OSSNETBIOSNAME>\n";
+        
+}              
 
-	print $cgi->header(-charset=>'utf-8');
-	print $cgi->start_html(-title=>'itool');
-	print "OSSNETBIOSNAME $ossnetbiosname\n";
-	print $cgi->end_html();
-}
 
 =item
 Ex: 
