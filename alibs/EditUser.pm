@@ -761,6 +761,7 @@ sub deleteProfil
                 system("/usr/sbin/oss_delete_profil.sh $uid WinXP")    if( $reply->{WinXP} );
                 system("/usr/sbin/oss_delete_profil.sh $uid Vista.V2") if( $reply->{Win7} );
                 system("/usr/sbin/oss_delete_profil.sh $uid Vista.V5") if( $reply->{Win10} );
+                system("/usr/sbin/oss_delete_profil.sh $uid Vista.V6") if( $reply->{Win10A} );
                 system("/usr/sbin/oss_delete_profil.sh $uid Linux")    if( $reply->{Linux} );
         }
         $this->default;
@@ -781,6 +782,7 @@ sub setProfilRealy
 		system("/usr/sbin/oss_copy_profil.sh $uid WinXP    $templ $ro $do") if( $reply->{WinXP} );
 		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V2 $templ $ro $do") if( $reply->{Win7} );
 		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V5 $templ $ro $do") if( $reply->{Win10} );
+		system("/usr/sbin/oss_copy_profil.sh $uid Vista.V6 $templ $ro $do") if( $reply->{Win10A} );
 		system("/usr/sbin/oss_copy_profil.sh $uid Linux    $templ $ro $do") if( $reply->{Linux} );
 	}
 	$this->default;
