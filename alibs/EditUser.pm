@@ -737,6 +737,7 @@ sub setProfil
 		{ name => 'WinXP',       value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'Win7',        value => 0, attributes => [ type => 'boolean', label => 'Win7 & Win8' ] },
 		{ name => 'Win10',       value => 0, attributes => [ type => 'boolean' ] },
+		{ name => 'Win10A',      value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'Linux',       value => 0, attributes => [ type => 'boolean' ] },
 		{ name => 'template',    value => \@templates, attributes => [ type => 'popup' ] },
 		{ name => 'readOnly',    value => 0, attributes => [ type => 'boolean' ] },
