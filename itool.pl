@@ -79,13 +79,11 @@ if( $action eq 'getPCN' )
 	if($tmp){
 		$pc_name = $tmp;
 	}
-
-        print $cgi->header(-charset=>'utf-8');
-        print $cgi->start_html(-title=>'itool');
-        print "PCN $pc_name\n";
-        print $cgi->end_html();
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "  <PCDNSNAME>".$pc_name."</PCDNSNAME>\n";
 }
-
 =item
 Ex: 
    wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getDNSNAME&IP=172.16.2.1" 
@@ -130,21 +128,21 @@ if( $action eq 'getDOMAIN' )
 	print "DOMAIN $sambadomain\n";
 	print $cgi->end_html();
 }
+
 =item
 Ex: 
    wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getOSSNETBIOSNAME" 
 =cut
 if( $action eq 'getOSSNETBIOSNAME' )
 {
-        my $sambadomain = "-";
-        my $ossnetbiosname = $oss->get_school_config("SCHOOL_NETBIOSNAME");
-        print "Content-Type: text/xml\r\n";   # header tells client you send XML
+	my $sambadomain = "-";
+	my $ossnetbiosname = $oss->get_school_config("SCHOOL_NETBIOSNAME");
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
         print "\r\n";                         # empty line is required between headers
         print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
-        print "  <OSSNETBIOSNAME>".$ossnetbiosname."</OSSNETBIOSNAME>\n";
-        
-}              
-
+	print "  <OSSNETBIOSNAME>".$ossnetbiosname."</OSSNETBIOSNAME>\n";
+	
+}
 
 =item
 Ex: 
@@ -857,3 +855,5 @@ sub notDefinedOss
 	print '</itool>';
 	exit;
 }
+
+
