@@ -319,7 +319,13 @@ sub delete
         my $reply  = shift;
 	my $cn     = $this->get_attribute($reply->{line},'cn');
 	my $dn     = $reply->{line};
-        system('nohup /usr/share/oss/setup/delete-guest-'.uc($cn).'.pl &');
+        if( -e '/usr/share/oss/setup/delete-guest-'.uc($cn).'.pl' ) {
+                system('nohup /usr/share/oss/setup/delete-guest-'.uc($cn).'.pl &');
+        }
+        else
+        {
+                system('nohup /usr/share/oss/tools/delete-guest-group.pl '.$cn.' &');
+        }
 
         $this->default();
 }
