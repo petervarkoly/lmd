@@ -1886,7 +1886,7 @@ sub get_free_pcs_of_room
 			next if ( $this->ip_exists($i) );
 			next if ( $roompref =~ /^SERVER_NET/ && $counter < 10 );
 			my $hostname = lc(sprintf("$roompref-pc%02d",$counter));
-			$hostname =~ s/_/-/;
+			$hostname =~ s/_/-/g;
 			next if ( $this->host_exists($hostname) );
 			push @hosts, $hostname.':'.$i;
 		}
