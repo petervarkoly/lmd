@@ -88,7 +88,7 @@ sub default
         {
                 $uid='admin';
         }
-	if( !$> && main::GetSessionValue('username') ne 'admin' )
+	if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
@@ -125,7 +125,7 @@ sub delete
 	my $this    = shift;
 	my $reply   = shift;
 	my $actpath = $reply->{path};
-	if(  main::GetSessionValue('username') ne 'admin' )
+	if(  main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		return {
 			TYPE => 'NOTICE',
@@ -156,7 +156,7 @@ sub mkDir
 	{
 		$actpath =~ s/\/$//;
 	}
-	if( ! $> && main::GetSessionValue('username') ne 'admin' )
+	if( ! $> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
@@ -188,7 +188,7 @@ sub createDir
 	my $reply   = shift;
 	my $actpath = $reply->{actpath};
 
-	if( !$> && main::GetSessionValue('username') ne 'admin' )
+	if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
@@ -220,7 +220,7 @@ sub upLoad
 	{
 		$actpath =~ s/\/$//;
 	}
-	if( !$> && main::GetSessionValue('username') ne 'admin' )
+	if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
@@ -254,7 +254,7 @@ sub doUpload
 
 	if( defined $reply->{file}->{content} )
 	{
-		if( !$> && main::GetSessionValue('username') ne 'admin' )
+		if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 		{
 			my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 			$) = join " ",@{$tmp->{OXGroupID}};
@@ -382,7 +382,7 @@ sub set
 	my $reply    = shift;
 	my $actpath  = $reply->{actpath} || ''; #TODO return if no path
 	#TEST if we may do so;
-	if( !$> && main::GetSessionValue('username') ne 'admin' )
+	if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
@@ -412,19 +412,22 @@ sub set
 	$s += 2 if ( $reply->{setgid} );
 	$s += 1 if ( $reply->{sticky} );
 	$cmd .= 'chmod '.$s.$u.$g.$o." '".$actpath."' ;\n";
+	$cmd .= "setfacl -k '".$actpath."' ;\n";
+	my $rmdefault = 0;
 	foreach( keys %{$reply->{acls}} )
 	{
-		if( $reply->{acls}->{$_}->{delete} )
-		{
-			$cmd .= 'setfacl -x '.$reply->{acls}->{$_}->{owner}." '".$actpath."' ;\n";
+		if( $reply->{acls}->{$_}->{delete} and $reply->{acls}->{$_}->{default} ) {
+			$rmdefault = 1;
 		}
-		else
+		if( ! $reply->{acls}->{$_}->{delete} and ( $reply->{acls}->{$_}->{default} and ! $rmdefault ) )
 		{
 			my $r = '';
 			$r .= 'r' if ( $reply->{acls}->{$_}->{read} );
 			$r .= 'w' if ( $reply->{acls}->{$_}->{write} );
 			$r .= 'x' if ( $reply->{acls}->{$_}->{execute} );
-			$cmd .= 'setfacl -m '.$reply->{acls}->{$_}->{owner}.":$r '".$actpath."' ;\n";
+			$cmd .= 'setfacl -d -m ' if( $reply->{acls}->{$_}->{default} );
+			$cmd .= 'setfacl -m '    if( ! $reply->{acls}->{$_}->{default} );
+			$cmd .= $reply->{acls}->{$_}->{owner}.":$r '".$actpath."' ;\n";
 		}
 	}
 	main::Debug( $cmd );
@@ -439,7 +442,7 @@ sub addAcl
 	my $filter   = $reply->{filter} || '*';
 	my $actpath  = $reply->{actpath} || ''; #TODO return if no path
 	#TEST if we may do so;
-	if( !$> && main::GetSessionValue('username') ne 'admin' )
+	if( !$> && main::GetSessionValue('username') !~ /^admin|cephalix/ )
 	{
 		my $tmp = $this->get_attributes(main::GetSessionValue('dn'),[ 'uidnumber', 'OXGroupID'] );
 		$) = join " ",@{$tmp->{OXGroupID}};
