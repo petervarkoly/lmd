@@ -574,10 +574,10 @@ sub isModuleAllowed($$$)
 sub isAllowed
 {
 	my $dest = shift;
-	my $dn   = GetSessionValue('dn');
+	my $uid  = GetSessionValue('username');
 	my $role = GetSessionValue('role');
 
-	my $sel  = $DBH->prepare("SELECT `right` FROM acls WHERE type='u' AND owner='$dn' AND destination='$dest'" );
+	my $sel  = $DBH->prepare("SELECT `right` FROM acls WHERE type='u' AND owner='$uid' AND destination='$dest'" );
 	$sel->execute;
 	my $value = $sel->fetch();
 	if( defined $value->[0] )
