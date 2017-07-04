@@ -49,9 +49,10 @@ sub getCapabilities
                 { allowedRole  => 'teachers,sysadmins' },
                 { category     => 'User' },
 		{ order        => 50 },
-                { variable     => [ "role",                     [ type => "list", size=>"3"] ] },
-                { variable     => [ "class",                    [ type => "list", size=>"5"] ] },
-                { variable     => [ "group",                    [ type => "list", size=>"5"] ] },
+                { variable     => [ "role",                     [ type => "list", size=>"5"] ] },
+                { variable     => [ "class",                    [ type => "list", size=>"7"] ] },
+                { variable     => [ "group",                    [ type => "list", size=>"7"] ] },
+		{ variable     => [ "helper",                   [ type => "list", size=>"5"] ] },
                 { variable     => [ "ownerwriterdn",            [ type => "boolean" ] ] },
                 { variable     => [ "cn",                       [ type => "label" ] ] },
                 { variable     => [ "fquotaused",               [ type => "label" ] ] },
@@ -105,10 +106,11 @@ sub default
 	}
 	elsif( main::GetSessionValue('role') =~ /sysadmins|root$/ )
 	{
-        	my ( $roles, $classes, $workgroups ) = $this->get_school_groups_to_search();
+		my ( $roles, $classes, $workgroups, $helper ) = $this->get_school_groups_to_search();
 		push @ret, { role        => $roles };
 		push @ret, { class       => $classes };
 		push @ret, { group       => $workgroups };
+		push @ret, { helper      => $helper };
 		push @ret, { rightaction => "edit" };
 		push @ret, { rightaction => "editAcls" };
 		push @ret, { rightaction => "delete" };
@@ -152,7 +154,8 @@ sub edit
 	else
 	{
 		$dn = $reply->{class} || $reply->{group};
-		$dn =  $reply->{role} if ( ! $dn );
+		$dn = $reply->{role}   if ( ! $dn );
+		$dn = $reply->{helper} if ( ! $dn );
 	}
 	my $filter = $reply->{filter} || '*';
 
