@@ -139,6 +139,8 @@ sub apply
 	if(!$room_dn){
 		$reply->{warning} = 1;
 		return $this->default($reply);
+        } else {
+                main::UpdateSessionData('room', $this->get_attribute($room_dn,'description'));
 	}
 
 	my $rooms;
