@@ -57,7 +57,7 @@ sub default
 
 	if( -e "/etc/cron.d/oss.virus-protection" ){
 		$c = 1;
-		$t = cmd_pipe("gawk '{ printf(\"%02i:%02i\",\$2,\$1)}' /etc/cron.d/oss.virus-protection");
+		$t = cmd_pipe("gawk '{ if( NR == 1 ) printf(\"%02i:%02i\",\$2,\$1)}' /etc/cron.d/oss.virus-protection");
 	}
 
 	return

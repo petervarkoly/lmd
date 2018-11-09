@@ -847,8 +847,8 @@ sub delete_printer
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
 	if( $install_printer_driver eq 'active' )
 	{
-		system("rpcclient -U$admin_user%$admin_pass -c 'setdriver \"$printer_name\" \" \"' printserver");
-		system("rpcclient -U$admin_user%$admin_pass -c 'deldriverex \"$printer_name\" ' printserver");
+		system("rpcclient -U$admin_user%'$admin_pass' -c 'setdriver \"$printer_name\" \" \"' printserver");
+		system("rpcclient -U$admin_user%'$admin_pass' -c 'deldriverex \"$printer_name\" ' printserver");
 		my $del_ppd_file = $printer_name.".ppd";
 		system("rm /var/lib/samba/drivers/x64/$del_ppd_file");
 		system("rm /var/lib/samba/drivers/x64/3/$del_ppd_file");
@@ -885,9 +885,9 @@ sub install_driver
 	my $install_printer_driver = get_install_printer_driver("$printer_name");
 
 	#set printer name if not ok
-	my $getprintername = `rpcclient -U$admin_user%$admin_pass -c 'getprinter "$printer_name" 2' printserver | grep "printername"`;
+	my $getprintername = `rpcclient -U$admin_user%'$admin_pass' -c 'getprinter "$printer_name" 2' printserver | grep "printername"`;
 	if( $getprintername =~ /(.*)printername\:\[\\\\PRINTSERVER\\\]$/){
-		`rpcclient -U$admin_user%$admin_pass -c 'setprintername "$printer_name" "$printer_name"' printserver`;
+		`rpcclient -U$admin_user%'$admin_pass' -c 'setprintername "$printer_name" "$printer_name"' printserver`;
 	}
 #	`rpcclient -U$admin_user%$admin_pass -c 'setprinterdata $printer_name string printprocessor winprint' printserver`;
 
@@ -918,7 +918,7 @@ sub install_driver
 		}
 
 		system('rcsmb reload');
-		cmd_pipe('at now', "cupsaddsmb -H printserver -U $admin_user%$admin_pass -v $printer_name");
+		cmd_pipe('at now', "cupsaddsmb -H printserver -U $admin_user%'$admin_pass' -v $printer_name");
 		sleep 5;
 
 		my $prt = $this->check_pid_cupsaddsmb();
@@ -930,8 +930,8 @@ sub install_driver
 			return $this->default();
 		}
 	}elsif( $install_printer_driver eq 'active' ){
-		system("rpcclient -U$admin_user%$admin_pass -c 'setdriver \"$printer_name\" \" \"' printserver");
-		system("rpcclient -U$admin_user%$admin_pass -c 'deldriverex \"$printer_name\" ' printserver");
+		system("rpcclient -U$admin_user%'$admin_pass' -c 'setdriver \"$printer_name\" \" \"' printserver");
+		system("rpcclient -U$admin_user%'$admin_pass' -c 'deldriverex \"$printer_name\" ' printserver");
 		my $del_ppd_file = $printer_name.".ppd";
 		system("rm /var/lib/samba/drivers/x64/$del_ppd_file");
 		system("rm /var/lib/samba/drivers/x64/3/$del_ppd_file");
@@ -956,8 +956,8 @@ sub get_install_printer_driver
 	my $admin_pass = main::GetSessionValue('userpassword');
 	my $admin_user = main::GetSessionValue('username');
 
-	my $get_driver = `rpcclient -U$admin_user%$admin_pass -c 'getdriver "$printer_name"' printserver | grep "Driver Name"`;
-	my $get_printer_driver = `rpcclient -U$admin_user%$admin_pass -c 'getprinter "$printer_name" 2' printserver | grep "drivername"`;
+	my $get_driver = `rpcclient -U$admin_user%'$admin_pass' -c 'getdriver "$printer_name"' printserver | grep "Driver Name"`;
+	my $get_printer_driver = `rpcclient -U$admin_user%'$admin_pass' -c 'getprinter "$printer_name" 2' printserver | grep "drivername"`;
 
 	if( $get_driver and $get_printer_driver ){
 		$install_driver = 'active';
