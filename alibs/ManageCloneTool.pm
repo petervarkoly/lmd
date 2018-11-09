@@ -50,6 +50,9 @@ sub interface
                 "syncToSchools",
                 "search",
                 "startSync",
+                "syncFromSchool",
+                "searchOne",
+                "startReSync",
                 "startImaging",
 		"startMulticast",
 		"killMulticast",
@@ -284,6 +287,10 @@ sub editHW
 	{
 	        push @r, { action => 'syncToSchools' };
 	}
+	if( -e "/usr/share/lmd/alibs/ManageSchools.pm" )
+	{
+	        push @r, { action => 'syncFromSchool' };
+	}
 
 	return \@r;
 }
@@ -318,7 +325,7 @@ sub syncToSchools
         return [
                 { filter      => $this->{filter} || '*' },
                 { schoolTypes => $this->schoolTypes() },
-               { dn          => $reply->{dn} },
+                { dn          => $reply->{dn} },
                 { rightaction => 'search' },
                 { rightaction => 'cancel' }
         ]
@@ -338,6 +345,71 @@ sub search
 		{ rightaction => 'startSync' },
 		{ rightaction => 'cancel' }
 	];
+}
+
+sub syncFromSchool
+{
+        my $this   = shift;
+        my $reply  = shift;
+
+        return [
+		{ subtitle => main::__("Resync Image from a School") },
+                { filter      => $this->{filter} || '*' },
+                { schoolTypes => $this->schoolTypes() },
+                { dn          => $reply->{dn} },
+                { rightaction => 'searchOne' },
+                { rightaction => 'cancel' }
+        ]
+
+}
+
+
+sub searchOne
+{
+        my $this   = shift;
+        my $reply  = shift;
+	return [
+		{ subtitle => main::__("Resync Image from a School") },
+		{ schools     => $this->searchSchools(1,$reply->{schoolTypes},$reply->{filter}) },
+		{ date        => '' },
+		{ time        => '' },
+		{ promptly    => 1  },
+		{ dn          => $reply->{dn} },
+		{ rightaction => 'startReSync' },
+		{ rightaction => 'cancel' }
+	];
+}
+
+sub startReSync
+{
+        my $this    = shift;
+        my $reply   = shift;
+	my $hw      = $reply->{dn};
+        my $time   = $reply->{time}.' '.$reply->{date};
+        if( $reply->{promptly} )
+        {
+                $time = 'now';
+        }
+	my $WARNING = '';
+	my $newhw   = 'cephalix'.$hw;
+	my $school  = ( split /\n/, $reply->{schools} )[0];
+	my $sCN     = get_name_of_dn($school);
+	if( -e "/var/adm/oss/$sCN-$newhw" )
+	{
+		my $tmp   = `find /var/adm/oss/$sCN-$newhw -printf "%AY-%Am-%Ad %AH:%AM"`;
+		$WARNING .= "=================================================================<br>";
+		$WARNING .= "Synnchronization into $sCN was already started at: $tmp.<br>";
+		$WARNING .= "If this is false you have to remove /var/adm/oss/$sCN-$newhw on CEPHALIX.<br>";
+		next;
+	}
+	my $command = "touch /var/adm/oss/$sCN-$newhw ;
+		       rsync -aAv $sCN:/srv/itool/images/$newhw/ /srv/itool/images/$hw/;
+		       rm -f /var/adm/oss/$sCN-$newhw ;";
+	print xml_time()." ".$command."\n";
+	my $job = create_job($command, "Sync Image '$hw' from '$school'","$time");
+	$this->add_value_to_vendor_object($school,'CEPHALIX','JOBS',$job );
+	sleep(5);
+        $this->default();
 }
 
 sub startSync
