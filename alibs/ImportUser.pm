@@ -55,6 +55,8 @@ sub getCapabilities
                 { variable     => [ "resetPW",         [ type => "boolean" ] ] },
                 { variable     => [ "full",            [ type => "boolean" , label=>"This list contains all user" ] ] },
                 { variable     => [ "test",            [ type => "boolean" , label=>"Try only what would happen"] ] },
+                { variable     => [ "allClasses",      [ type => "boolean" , label=>"This list contains all classes", help=>"Classes which are not in the list will be deleted. This parameter has only affect for students." ] ] },
+                { variable     => [ "cleanClassDirs",  [ type => "boolean" , label=>"Clean up the directories of classes", help => "The directories of all classes will deleted and new created. This parameter has only affect for students." ] ] },
                 { variable     => [ "alias",           [ type => "boolean" ] ] },
                 { variable     => [ "mailenabled",     [ type => "popup" ] ] },
 		{ variable     => [ "role",            [ type => "popup" ] ] },
@@ -118,23 +120,25 @@ sub default
 	my @mailenabled = ([ 'ok', main::__('ok') ],  [ 'no', main::__('no') ], [ 'local_only', main::__('local_only') ] );
 	my $default_mailenabled = $this->get_school_config('SCHOOL_MAILBOX_ACCESS') || 'ok';
 	push @mailenabled, '---DEFAULTS---', "$default_mailenabled" ;
+	my @ret = ();
 
-        return [
-                { file         => '' },
-		{ format       => \@format },
-                { role         => \@role},
-		{ lang         => getLanguages(main::GetSessionValue('lang')) },
-		{ test	       => 1 },
-		{ full	       => 0 },
-		{ alias	       => 0 },
-		{ mustchange   => 0 },
-		{ resetPW      => 0 },
-		{ userpassword => '' },
-		{ mailenabled  => \@mailenabled },
-                { action       => "cancel" },
-                { action       => "showOldImports" },
-                { action       => "import" }
-        ];
+        push @ret, { file           => '' };
+	push @ret, { format         => \@format };
+        push @ret, { role           => \@role};
+	push @ret, { lang           => getLanguages(main::GetSessionValue('lang')) };
+	push @ret, { test	    => 1 };
+	push @ret, { full	    => 0 } if main::isAllowed('ImportUser.full');
+        push @ret, { allClasses     => 0 } if main::isAllowed('ImportUser.allClasses');
+        push @ret, { cleanClassDirs => 0 } if main::isAllowed('ImportUser.cleanClassDirs');
+	push @ret, { alias	    => 0 } if main::isAllowed('ImportUser.alias');
+	push @ret, { mustchange     => 0 } if main::isAllowed('ImportUser.mustchange');
+	push @ret, { resetPW        => 0 } if main::isAllowed('ImportUser.resetPW');
+	push @ret, { userpassword   => '' }if main::isAllowed('ImportUser.userpassword');
+	push @ret, { mailenabled    => \@mailenabled } if main::isAllowed('ImportUser.mailenabled');
+        push @ret, { action         => "cancel" };
+        push @ret, { action         => "showOldImports" };
+        push @ret, { action         => "import" };
+	return \@ret;
 
 }
 
@@ -173,11 +177,19 @@ sub import
 	{
 		$attributes .= ' --full';
 	}
-	if( $reply->{mustchange} )
+        if( defined $reply->{cleanClassDir} && $reply->{role} eq 'students' && $reply->{cleanClassDir} )
+        {
+                $attributes .= ' --cleanClassDir';
+        }
+        if( defined $reply->{allClasses} && $reply->{role} eq 'students' && $reply->{allClasses} )
+        {
+                $attributes .= ' --allClasses';
+        }
+	if( defined $reply->{mustchange} && $reply->{mustchange} )
 	{
 		$attributes .= ' --mustchange';
 	}
-	if( $reply->{resetPW} )
+	if( defined $reply->{resetPW} && $reply->{resetPW} )
 	{
 		$attributes .= ' --resetPW';
 	}
@@ -185,11 +197,11 @@ sub import
 	{
 		$attributes .= ' --notest';
 	}
-	if( $reply->{alias} )
+	if( defined $reply->{alias} && $reply->{alias} )
 	{
 		$attributes .= ' --alias';
 	}
-	if( $reply->{userpassword} ne '' )
+	if( defined $reply->{userpassword} && $reply->{userpassword} ne '' )
 	{
 		$attributes .= " --userpassword '".$reply->{userpassword}."'";
 	}

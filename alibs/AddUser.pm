@@ -70,7 +70,7 @@ sub default
 	my $uid    	= $reply->{uid} || ''; 
 	my $sn          = $reply->{sn} || ''; 
 	my $givenname   = $reply->{givenname} || ''; 
-	my $userpassword= $reply->{userpassword} || 'system'; 
+	my $userpassword= $reply->{userpassword} || create_secure_pw() ; 
 	my $quota       = $reply->{quota} || ''; 
 	my $fquota	= $reply->{fquota} || ''; 
 	my $mustchange  = $reply->{mustchange} || 0;
@@ -97,16 +97,16 @@ sub default
         push @role, '---DEFAULTS---' , 'students';
 	push @class, @{$classes};
        
-	push @ret, { uid	      => $uid };
-	push @ret, { sn	      => $sn };
+	push @ret, { uid	 => $uid };
+	push @ret, { sn	         => $sn };
 	push @ret, { givenname   => $givenname };
 	push @ret, { userpassword=> $userpassword };
-	push @ret, { mustchange  => $mustchange };
-	push @ret, { alias       => $alias };
+	push @ret, { mustchange  => $mustchange } if main::isAllowed('AddUser.mustchange');
+	push @ret, { alias       => $alias }      if main::isAllowed('AddUser.alias');
 	push @ret, { birthday    => $birthday };
 	push @ret, { role        => \@role};
 	push @ret, { class       => \@class };
-	push @ret, { quota	      => $quota };
+	push @ret, { quota	 => $quota };
 	push @ret, { fquota      => $fquota };
 	push @ret, { preferredlanguage => getLanguages(main::GetSessionValue('lang')) };
 	push @ret, { mailenabled => \@mailEnabled };
@@ -114,8 +114,8 @@ sub default
 	push @ret, { webdav_access => 0 };
 	push @ret, { cloud_access  => 1 } if( -e "/etc/sysconfig/OSS_CLOUD" );
 	push @ret, { rasaccess  => $this->get_wlan_workstations } if ( $this->{RADIUS} );
-	push @ret, { action   => "cancel" };
-	push @ret, { action   => "insert" };
+	push @ret, { action     => "cancel" };
+	push @ret, { action     => "insert" };
 	return \@ret;
 }
 
@@ -154,7 +154,7 @@ sub insert
 	my $user = $this->get_user($dn,['uid','cn','description']);
 	return {
 	     TYPE                 => 'NOTICE',
-	     MESSAGE1_NOTRANSLATE => $user->{cn}->[0].',  '.$user->{uid}->[0].', ('.$user->{description}->[0].')',
+	     MESSAGE1_NOTRANSLATE => $user->{cn}->[0].',  '.$user->{uid}->[0].', ('.$user->{description}->[0].')  '.$reply->{userpassword},
 	     MESSAGE              => 'User was created succesfully'
 	};
 }

@@ -79,11 +79,33 @@ if( $action eq 'getPCN' )
 	if($tmp){
 		$pc_name = $tmp;
 	}
-
-        print $cgi->header(-charset=>'utf-8');
-        print $cgi->start_html(-title=>'itool');
-        print "PCN $pc_name\n";
-        print $cgi->end_html();
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "  <PCDNSNAME>".$pc_name."</PCDNSNAME>\n";
+}
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getDNSNAME&IP=172.16.2.1" 
+=cut
+if( $action eq 'getDNSNAME' )
+{
+        my $ip  = $cgi->param("IP");
+        my $pc_name = "-";
+        if( !defined $ip )
+        {
+           $ip  = $cgi->remote_addr();
+        }
+        my $wsDN = $oss->get_host($ip);
+        my $tmp = get_name_of_dn($wsDN);
+        $tmp =~ s/-wlan$//;
+        if($tmp){
+                $pc_name = $tmp;
+        }
+        print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "  <DNSNAME>".$pc_name."</DNSNAME>\n";
 }
 
 =item
@@ -105,6 +127,62 @@ if( $action eq 'getDOMAIN' )
 	print $cgi->start_html(-title=>'itool');
 	print "DOMAIN $sambadomain\n";
 	print $cgi->end_html();
+}
+
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?ACTION=getOSSNETBIOSNAME" 
+=cut
+if( $action eq 'getOSSNETBIOSNAME' )
+{
+	my $sambadomain = "-";
+	my $ossnetbiosname = $oss->get_school_config("SCHOOL_NETBIOSNAME");
+	print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+	print "  <OSSNETBIOSNAME>".$ossnetbiosname."</OSSNETBIOSNAME>\n";
+	
+}
+
+=item
+Ex: 
+   wget -O 1.txt --no-check-certificate "https://admin/cgi-bin/itool.pl?USER=edv-pc02&PASS=edv-pc02&ACTION=getPRINTER&IP=10.0.2.2" 
+=cut
+
+if( $action eq 'getPRINTER' )
+{
+        my $ip  = $cgi->param("IP");
+        $ip  = $cgi->remote_addr() if( !defined $ip );
+        notDefinedOss() if( !defined $oss );
+
+        # get host name
+        my $wsName = "-";
+        my $wsDN = $oss->get_host($ip);
+        my $tmp  = get_name_of_dn($wsDN);
+        if( $tmp =~ s/-wlan$// )
+        {
+           $wsDN = $oss->get_host($tmp);
+        }
+        $wsName = $tmp if($tmp);
+
+        my $room     = get_parent_dn($wsDN);
+        my $dprint   = $oss->get_vendor_object($wsDN,'EXTIS','DEFAULT_PRINTER');
+        $dprint      = $oss->get_vendor_object($room,'EXTIS','DEFAULT_PRINTER') if( !scalar(@$dprint) );
+        my $prints   = $oss->get_vendor_object($wsDN,'EXTIS','AVAILABLE_PRINTER');
+        $prints      = $oss->get_vendor_object($room,'EXTIS','AVAILABLE_PRINTER') if( !scalar(@$prints));
+
+        print "Content-Type: text/xml\r\n";   # header tells client you send XML
+        print "\r\n";                         # empty line is required between headers
+        print '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        print "<printers>\n";
+        if( $dprint->[0] )
+        {
+                print '  <defaultPrinter>'.$dprint->[0]."</defaultPrinter>\n";
+        }
+        print "   <printer>";
+        print join(";",split(/\n/,$prints->[0] ));
+        print " </printer>\n";
+        print '</printers>';
 }
 
 =item
@@ -233,12 +311,13 @@ if( $action eq 'getSwRepoInfo' )
         }
 
 	# sort package
-	if( !exists($tmpHash{deinstallation_scheduled}) or !scalar($tmpHash{deinstallation_scheduled}) ){
-		$tmpHash{deinstallation_scheduled} = reverse($tmpHash{deinstallation_scheduled});
-	}
-	if( !exists($tmpHash{installation_scheduled}) or !scalar($tmpHash{installation_scheduled}) ){
-		$tmpHash{installation_scheduled} = $oss->sortPkg($tmpHash{installation_scheduled});
-	}
+        if( exists($tmpHash{deinstallation_scheduled}) or scalar($tmpHash{deinstallation_scheduled}) ){
+                @{$tmpHash{deinstallation_scheduled}} = reverse(@{$oss->sortPkg($tmpHash{deinstallation_scheduled})});
+        }
+
+        if( exists($tmpHash{installation_scheduled}) or scalar($tmpHash{installation_scheduled}) ){
+                $tmpHash{installation_scheduled} = $oss->sortPkg($tmpHash{installation_scheduled});
+        }
 
 	# get installed manual software
 	my $obj = $oss->search_vendor_object_for_vendor( 'osssoftware', $wsUserDn );
@@ -776,3 +855,5 @@ sub notDefinedOss
 	print '</itool>';
 	exit;
 }
+
+

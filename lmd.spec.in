@@ -1,15 +1,13 @@
 #
 # Spec file for LinuxManagemenDaemon (@VERSION@)
-# Copyright (c) 2015 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
-# Copyright (c) 2012 Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
-# Copyright (c) 2009 Peter Varkoly Fuerth, Germany.  All rights reserved.
+# Copyright (c) Peter Varkoly <peter@varkoly.de> Nürnberg, Germany.  All rights reserved.
 #
 Name:	      lmd
 Summary:      Perl based Linux Management Daemon
 Version:      @VERSION@
 Release:      @RELEASE@
-License:      Commercial
-Vendor:       EXTIS GmbH, Uttenreuth, Germany
+License:      GPL-3.0+
+Vendor:       Dipl-Ing Peter Varkoly Nuremberg, Germany
 Distribution: SLE11
 Packager:     peter@varkoly.de
 Group:        Productivity/

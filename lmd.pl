@@ -574,10 +574,10 @@ sub isModuleAllowed($$$)
 sub isAllowed
 {
 	my $dest = shift;
-	my $dn   = GetSessionValue('dn');
+	my $uid  = GetSessionValue('username');
 	my $role = GetSessionValue('role');
 
-	my $sel  = $DBH->prepare("SELECT `right` FROM acls WHERE type='u' AND owner='$dn' AND destination='$dest'" );
+	my $sel  = $DBH->prepare("SELECT `right` FROM acls WHERE type='u' AND owner='$uid' AND destination='$dest'" );
 	$sel->execute;
 	my $value = $sel->fetch();
 	if( defined $value->[0] )
@@ -1449,12 +1449,12 @@ sub __
 
     $sel  = $DBH->prepare("SELECT value FROM missedlang WHERE lang='$lang' AND section='GLOBAL' AND ( string='$string' OR string='$lstring' )");
     $sel->execute;
-    my $missedvalue = $sel->fetch();
-    if( defined $missedvalue )
+    my $missedGlobal = $sel->fetch();
+    if( defined $missedGlobal )
     {
-        if( $missedvalue->[0] ne '' )
+        if( $missedGlobal->[0] ne '' )
         {
-            return $missedvalue->[0];
+            return $missedGlobal->[0];
         }
     }
 
