@@ -918,7 +918,7 @@ sub install_driver
 		}
 
 		system('rcsmb reload');
-		cmd_pipe('at now', "cupsaddsmb -H printserver -U $admin_user%$admin_pass -v $printer_name");
+		cmd_pipe('su - at -c "at now"', "cupsaddsmb -H printserver -U $admin_user%$admin_pass -v $printer_name");
 		sleep 5;
 
 		my $prt = $this->check_pid_cupsaddsmb();
