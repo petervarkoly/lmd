@@ -919,7 +919,7 @@ sub install_driver
 
 		system('rcsmb reload');
 		sleep 4;
-		system("/usr/sbin/oss_activate_printer.sh $admin_user '$admin_pass' $printer_name");
+		system("/usr/sbin/oss_activate_printer.sh $printer_name $admin_user '$admin_pass'");
 		sleep 2;
 
 		my $prt = $this->check_pid_cupsaddsmb();
